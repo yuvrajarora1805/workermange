@@ -1,0 +1,23 @@
+[
+  {
+    "TABLE_NAME": "daily_assignments",
+    "COLUMN_NAME": "line_id",
+    "CONSTRAINT_NAME": "fk_da_line",
+    "REFERENCED_TABLE_NAME": "lines",
+    "REFERENCED_COLUMN_NAME": "id"
+  },
+  {
+    "TABLE_NAME": "daily_assignments",
+    "COLUMN_NAME": "machine_id",
+    "CONSTRAINT_NAME": "fk_da_machine",
+    "REFERENCED_TABLE_NAME": "machines",
+    "REFERENCED_COLUMN_NAME": "id"
+  },
+  {
+    "TABLE_NAME": "daily_assignments",
+    "COLUMN_NAME": "worker_id",
+    "CONSTRAINT_NAME": "fk_da_worker",
+    "REFERENCED_TABLE_NAME": "workers",
+    "REFERENCED_COLUMN_NAME": "id"
+  }
+]

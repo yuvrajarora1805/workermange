@@ -1,0 +1,15 @@
+*************************** 1. row ***************************
+       Table: attendance
+Create Table: CREATE TABLE `attendance` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `worker_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `check_in_time` time DEFAULT NULL,
+  `status` enum('present','absent','late') DEFAULT 'present',
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `shift` enum('day','night') NOT NULL DEFAULT 'day',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_attendance` (`worker_id`,`date`),
+  UNIQUE KEY `unique_attendance_shift` (`worker_id`,`date`,`shift`),
+  CONSTRAINT `attendance_ibfk_1` FOREIGN KEY (`worker_id`) REFERENCES `workers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=241 DEFAULT CHARSET=utf8mb4

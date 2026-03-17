@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Worker Management System
+
+A comprehensive web application designed to track production workers, machines, attendance, and automatically optimize the daily assignment of workers to machines based on their historical efficiency scores.
+
+## Tech Stack
+- **Frontend & API**: [Next.js](https://nextjs.org/) (App Router)
+- **Database**: MySQL
+- **Styling**: Tailwind CSS / Custom UI with modern dark mode theme
+
+## Core Features
+
+1. **Dashboard & Attendance Tracking**
+   - Easily mark workers as present, absent, or late for the day.
+   - Workers who are present will be considered for machine allocation.
+
+2. **Machine & Line Management**
+   - Organize your factory floor by assigning Machines to specific Production Lines.
+   - Maintain the positional order of machines on each line.
+
+3. **Performance Logging**
+   - **Production Logs**: Log the daily target units vs. actual units produced by each worker on their assigned machine.
+   - **Manager Ratings**: Managers can provide a daily subjective rating (1-4 scale) and comments for each worker.
+
+4. **Efficiency Calculation**
+   - A fully automated scoring system that runs daily to compute every worker's efficiency.
+   - Final Efficiency Score = **80% Production Score** (actual/target units capped at 100% of the 80 points) + **20% Manager Rating Score**.
+
+5. **Smart Auto-Assignment Algorithm**
+   - A one-click allocation feature that automatically assigns present workers to active machines for the shift.
+   - The algorithm considers both the **overall global efficiency** of the worker AND their **historical efficiency on specific machines**.
+   - It performs a Greedy match, assigning the highest scoring (worker, machine) pairs first, ensuring your most productive workers are placed on the machines they operate best.
+   - Any remaining unassigned workers are placed on the "Bench".
+
+## Database Setup
+
+1. Create a MySQL database named `workermanage`.
+2. Import the database schema and seed data:
+   ```bash
+   mysql -u your_username -p workermanage < schema.sql
+   ```
+3. Update your `.env` or `src/lib/db.js` with your MySQL connection credentials.
 
 ## Getting Started
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+```
+
+Run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Current Assignment Algorithm Details
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The current auto-allocator in `src/app/api/assignments/route.js` assigns workers by calculating a "match score" for every (worker, machine) combination:
+- **Global Efficiency**: Calculated over the last 30 days based on all machines operated by the worker.
+- **Machine-Specific Efficiency**: Calculated over the last 60 days on that exact machine.
+- **Formulas**: Match Score = 70% (Machine-Specific Score) + 30% (Global Score). If no specific history exists, it falls back purely to the Global Score. 
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Workers and machines are paired by sorting these match scores descending.

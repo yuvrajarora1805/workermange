@@ -1,66 +1,204 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
 
-export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.js file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+import { useState, useEffect } from 'react';
+
+export default function Dashboard() {
+    const [stats, setStats] = useState({
+        totalWorkers: 0,
+        presentToday: 0,
+        totalLines: 0,
+        totalMachines: 0,
+        assignedToday: 0,
+        benchToday: 0,
+    });
+    const [recentAssignments, setRecentAssignments] = useState([]);
+    const [topWorkers, setTopWorkers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const currentShift = (() => {
+        const hour = new Date().getHours();
+        return (hour >= 7 && hour < 19) ? 'day' : 'night';
+    })();
+
+    useEffect(() => {
+        loadDashboard();
+    }, []);
+
+    async function loadDashboard() {
+        try {
+            const [workersRes, linesRes, attendanceRes, assignmentsRes, efficiencyRes] = await Promise.all([
+                fetch('/api/workers').then(r => r.json()),
+                fetch('/api/lines').then(r => r.json()),
+                fetch('/api/attendance').then(r => r.json()),
+                fetch(`/api/assignments?shift=${currentShift}`).then(r => r.json()),
+                fetch('/api/efficiency').then(r => r.json()),
+            ]);
+
+            const totalMachines = linesRes.data?.reduce((sum, l) => sum + parseInt(l.machine_count || 0), 0) || 0;
+
+            setStats({
+                totalWorkers: workersRes.data?.length || 0,
+                presentToday: attendanceRes.data?.summary?.present || 0,
+                totalLines: linesRes.data?.length || 0,
+                totalMachines,
+                assignedToday: assignmentsRes.data?.summary?.total_assigned || 0,
+                benchToday: assignmentsRes.data?.summary?.total_bench || 0,
+            });
+
+            // Flatten assignments for recent view
+            const allAssignments = [];
+            if (assignmentsRes.data?.assignments) {
+                for (const line of assignmentsRes.data.assignments) {
+                    for (const m of line.machines) {
+                        allAssignments.push(m);
+                    }
+                }
+            }
+            setRecentAssignments(allAssignments.slice(0, 10));
+
+            // Top 5 workers
+            if (efficiencyRes.data) {
+                setTopWorkers(efficiencyRes.data.slice(0, 5));
+            }
+        } catch (err) {
+            console.error('Dashboard load error:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function getEfficiencyClass(score) {
+        if (score >= 70) return 'efficiency-high';
+        if (score >= 50) return 'efficiency-medium';
+        if (score >= 30) return 'efficiency-low';
+        return 'efficiency-poor';
+    }
+
+    if (loading) {
+        return (
+            <div className="loading-overlay">
+                <div className="loader"></div>
+                <p>Loading dashboard...</p>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <div className="page-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2>📊 Dashboard</h2>
+                    <span className={`badge ${currentShift === 'day' ? 'badge-info' : 'badge-neutral'}`} style={{ fontSize: '12px', padding: '4px 8px' }}>
+                        {currentShift === 'day' ? '☀️ Day Shift' : '🌙 Night Shift'}
+                    </span>
+                </div>
+                <p>Overview of today&apos;s operations ({new Date().toLocaleDateString()})</p>
+            </div>
+
+            <div className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-icon">👷</div>
+                    <div className="stat-value">{stats.totalWorkers}</div>
+                    <div className="stat-label">Total Workers</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon">✅</div>
+                    <div className="stat-value">{stats.presentToday}</div>
+                    <div className="stat-label">Present Today</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon">🏭</div>
+                    <div className="stat-value">{stats.totalLines}</div>
+                    <div className="stat-label">Active Lines</div>
+                </div>
+                <div className="stat-card">
+                    <div className="stat-icon">🔧</div>
+                    <div className="stat-value">{stats.assignedToday}/{stats.totalMachines}</div>
+                    <div className="stat-label">Machines Filled</div>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                {/* Top Workers */}
+                <div className="card">
+                    <div className="card-header">
+                        <h3 className="card-title">🏆 Top Workers by Efficiency</h3>
+                    </div>
+                    {topWorkers.length > 0 ? (
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Worker</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {topWorkers.map((w, i) => (
+                                        <tr key={w.worker_id}>
+                                            <td style={{ fontWeight: 700, color: i === 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                                                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                                            </td>
+                                            <td>
+                                                <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{w.worker_name}</div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{w.employee_id}</div>
+                                            </td>
+                                            <td>
+                                                <span className={`efficiency-badge ${getEfficiencyClass(w.total_score)}`}>
+                                                    {w.total_score}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📈</div>
+                            <h3>No efficiency data yet</h3>
+                            <p>Add production logs and ratings to see scores</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Recent Assignments */}
+                <div className="card">
+                    <div className="card-header">
+                        <h3 className="card-title">🔧 Today&apos;s Assignments</h3>
+                        <a href="/assignments" className="btn btn-ghost btn-sm">View All</a>
+                    </div>
+                    {recentAssignments.length > 0 ? (
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Worker</th>
+                                        <th>Machine</th>
+                                        <th>Line</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentAssignments.map((a, i) => (
+                                        <tr key={i}>
+                                            <td style={{ fontWeight: 500 }}>{a.worker_name}</td>
+                                            <td><span className="badge badge-info">{a.machine_name}</span></td>
+                                            <td style={{ color: 'var(--text-muted)' }}>{a.line_name}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="empty-state">
+                            <div className="empty-state-icon">📋</div>
+                            <h3>No assignments yet</h3>
+                            <p>Mark attendance and run auto-assignment</p>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+    );
 }

@@ -1,0 +1,20 @@
+CREATE TABLE `daily_assignments` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `worker_id` int(11) NOT NULL,
+  `machine_id` int(11) NOT NULL,
+  `product_id` int(11) DEFAULT NULL,
+  `line_id` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `assigned_at` timestamp NULL DEFAULT current_timestamp(),
+  `is_manual` tinyint(1) DEFAULT 0,
+  `shift` enum('day','night') NOT NULL DEFAULT 'day',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_assignment_worker_shift` (`worker_id`,`date`,`shift`),
+  UNIQUE KEY `unique_assignment_machine_shift` (`machine_id`,`date`,`shift`),
+  UNIQUE KEY `unique_worker_date_shift` (`worker_id`,`date`,`shift`),
+  KEY `fk_assignment_product` (`product_id`),
+  KEY `fk_da_line` (`line_id`),
+  CONSTRAINT `fk_da_line` FOREIGN KEY (`line_id`) REFERENCES `lines` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_da_machine` FOREIGN KEY (`machine_id`) REFERENCES `machines` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_da_worker` FOREIGN KEY (`worker_id`) REFERENCES `workers` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=208 DEFAULT CHARSET=utf8mb4
