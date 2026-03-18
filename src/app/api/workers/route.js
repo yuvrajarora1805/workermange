@@ -9,7 +9,7 @@ export async function GET(request) {
         const active = searchParams.get('active');
         const id = searchParams.get('id');
 
-        let query = 'SELECT * FROM workers';
+        let query = 'SELECT id, name, employee_id, phone, skill_level, gender, is_active FROM workers';
         const params = [];
         const conditions = [];
 
@@ -42,15 +42,15 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { name, phone, employee_id, skill_level } = body;
+        const { name, phone, employee_id, skill_level, gender } = body;
 
         if (!name || !employee_id) {
             return NextResponse.json({ success: false, error: 'Name and Employee ID are required' }, { status: 400 });
         }
 
         const [result] = await pool.query(
-            'INSERT INTO workers (name, phone, employee_id, skill_level) VALUES (?, ?, ?, ?)',
-            [name, phone || null, employee_id, skill_level || 'intermediate']
+            'INSERT INTO workers (name, phone, employee_id, skill_level, gender) VALUES (?, ?, ?, ?, ?)',
+            [name, phone || null, employee_id, skill_level || 'intermediate', gender || null]
         );
 
         return NextResponse.json({ success: true, data: { id: result.insertId } }, { status: 201 });
@@ -66,7 +66,7 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const body = await request.json();
-        const { id, name, phone, employee_id, skill_level, is_active } = body;
+        const { id, name, phone, employee_id, skill_level, is_active, gender } = body;
 
         if (!id) {
             return NextResponse.json({ success: false, error: 'Worker ID is required' }, { status: 400 });
@@ -80,6 +80,7 @@ export async function PUT(request) {
         if (employee_id !== undefined) { fields.push('employee_id = ?'); params.push(employee_id); }
         if (skill_level !== undefined) { fields.push('skill_level = ?'); params.push(skill_level); }
         if (is_active !== undefined) { fields.push('is_active = ?'); params.push(is_active); }
+        if (gender !== undefined) { fields.push('gender = ?'); params.push(gender); }
 
         if (fields.length === 0) {
             return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 });

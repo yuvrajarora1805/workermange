@@ -209,7 +209,7 @@ export default function AssignmentsPage() {
                 </div>
             </div>
 
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="stats-grid responsive-grid-3">
                 <div className="stat-card">
                     <div className="stat-icon">✅</div>
                     <div className="stat-value" style={{ color: 'var(--success)' }}>{data.summary.total_assigned || 0}</div>

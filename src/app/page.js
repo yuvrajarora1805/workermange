@@ -118,7 +118,7 @@ export default function Dashboard() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="dashboard-grid">
                 {/* Top Workers */}
                 <div className="card">
                     <div className="card-header">
@@ -126,7 +126,7 @@ export default function Dashboard() {
                     </div>
                     {topWorkers.length > 0 ? (
                         <div className="table-wrapper">
-                            <table>
+                            <table className="mobile-stack-table">
                                 <thead>
                                     <tr>
                                         <th>#</th>
@@ -137,14 +137,14 @@ export default function Dashboard() {
                                 <tbody>
                                     {topWorkers.map((w, i) => (
                                         <tr key={w.worker_id}>
-                                            <td style={{ fontWeight: 700, color: i === 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                                            <td data-label="Rank" style={{ fontWeight: 700, color: i === 0 ? '#fbbf24' : 'var(--text-muted)' }}>
                                                 {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                                             </td>
-                                            <td>
+                                            <td data-label="Worker">
                                                 <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{w.worker_name}</div>
                                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{w.employee_id}</div>
                                             </td>
-                                            <td>
+                                            <td data-label="Score">
                                                 <span className={`efficiency-badge ${getEfficiencyClass(w.total_score)}`}>
                                                     {w.total_score}%
                                                 </span>
@@ -171,7 +171,7 @@ export default function Dashboard() {
                     </div>
                     {recentAssignments.length > 0 ? (
                         <div className="table-wrapper">
-                            <table>
+                            <table className="mobile-stack-table">
                                 <thead>
                                     <tr>
                                         <th>Worker</th>
@@ -182,9 +182,9 @@ export default function Dashboard() {
                                 <tbody>
                                     {recentAssignments.map((a, i) => (
                                         <tr key={i}>
-                                            <td style={{ fontWeight: 500 }}>{a.worker_name}</td>
-                                            <td><span className="badge badge-info">{a.machine_name}</span></td>
-                                            <td style={{ color: 'var(--text-muted)' }}>{a.line_name}</td>
+                                            <td data-label="Worker" style={{ fontWeight: 500 }}>{a.worker_name}</td>
+                                            <td data-label="Machine"><span className="badge badge-info">{a.machine_name}</span></td>
+                                            <td data-label="Line" style={{ color: 'var(--text-muted)' }}>{a.line_name}</td>
                                         </tr>
                                     ))}
                                 </tbody>

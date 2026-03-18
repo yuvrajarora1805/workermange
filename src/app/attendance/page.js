@@ -141,7 +141,7 @@ export default function AttendancePage() {
 
             <div className="card">
                 <div className="table-wrapper">
-                    <table>
+                    <table className="mobile-stack-table">
                         <thead>
                             <tr>
                                 <th>Employee ID</th>
@@ -154,32 +154,32 @@ export default function AttendancePage() {
                         <tbody>
                             {data.workers.map(w => (
                                 <tr key={w.id}>
-                                    <td style={{ fontWeight: 600, color: 'var(--accent-light)' }}>{w.employee_id}</td>
-                                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{w.name}</td>
-                                    <td>
+                                    <td data-label="ID" style={{ fontWeight: 600, color: 'var(--accent-light)' }}>{w.employee_id}</td>
+                                    <td data-label="Worker" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{w.name}</td>
+                                    <td data-label="Status">
                                         {w.status ? (
-                                            <span className={`badge ${w.status === 'present' ? 'badge-success' : w.status === 'late' ? 'badge-warning' : 'badge-danger'}`}>
+                                            <span className={`badge ${w.status === 'present' ? 'badge-success' : w.status === 'late' ? 'badge-warning' : w.status === 'absent' ? 'badge-danger' : 'badge-neutral'}`}>
                                                 {w.status}
                                             </span>
                                         ) : (
                                             <span className="badge badge-neutral">unmarked</span>
                                         )}
                                     </td>
-                                    <td style={{ color: 'var(--text-muted)' }}>{w.check_in_time || '—'}</td>
-                                    <td>
-                                        <div className="attendance-status">
+                                    <td data-label="Time" style={{ color: 'var(--text-muted)' }}>{w.check_in_time || '—'}</td>
+                                    <td data-label="Mark">
+                                        <div className="attendance-status" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                                             <button
                                                 className={`attendance-btn ${w.status === 'present' ? 'active-present' : ''}`}
                                                 onClick={() => markAttendance(w.id, 'present')}
-                                            >✅ Present</button>
+                                            >✅</button>
                                             <button
                                                 className={`attendance-btn ${w.status === 'late' ? 'active-late' : ''}`}
                                                 onClick={() => markAttendance(w.id, 'late')}
-                                            >⏰ Late</button>
+                                            >⏰</button>
                                             <button
                                                 className={`attendance-btn ${w.status === 'absent' ? 'active-absent' : ''}`}
                                                 onClick={() => markAttendance(w.id, 'absent')}
-                                            >❌ Absent</button>
+                                            >❌</button>
                                         </div>
                                     </td>
                                 </tr>

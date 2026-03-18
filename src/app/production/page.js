@@ -337,7 +337,7 @@ export default function ProductionPage() {
                             </div>
 
                             <div className="table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                                <table>
+                                <table className="mobile-stack-table">
                                     <thead>
                                         <tr>
                                             <th>Worker</th>
@@ -349,12 +349,12 @@ export default function ProductionPage() {
                                     <tbody>
                                         {bulkData.map((row, idx) => (
                                             <tr key={row.worker_id}>
-                                                <td>
+                                                <td data-label="Worker">
                                                     <div style={{ fontWeight: 600 }}>{row.worker_name}</div>
                                                     <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{row.employee_id}</div>
                                                 </td>
-                                                <td>{row.machine_name}</td>
-                                                <td>
+                                                <td data-label="Machine">{row.machine_name}</td>
+                                                <td data-label="Target">
                                                     <input 
                                                         type="number" 
                                                         className="form-input" 
@@ -366,7 +366,7 @@ export default function ProductionPage() {
                                                         }}
                                                     />
                                                 </td>
-                                                <td>
+                                                <td data-label="Actual">
                                                     <input 
                                                         type="number" 
                                                         className="form-input" 
@@ -410,7 +410,7 @@ export default function ProductionPage() {
                 </div>
                 {logs.length > 0 ? (
                     <div className="table-wrapper">
-                        <table>
+                        <table className="mobile-stack-table">
                             <thead>
                                 <tr><th>Worker</th><th>Shift</th><th>Machine</th><th>Product</th><th>Target</th><th>Actual</th><th>Performance</th></tr>
                             </thead>
@@ -419,20 +419,20 @@ export default function ProductionPage() {
                                     const perf = getPerformance(l.target_units, l.actual_units);
                                     return (
                                         <tr key={l.id}>
-                                            <td>
+                                            <td data-label="Worker">
                                                 <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{l.worker_name}</div>
                                                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{l.employee_id}</div>
                                             </td>
-                                            <td>
+                                            <td data-label="Shift">
                                                 <span className={`badge ${l.shift === 'day' ? 'badge-info' : 'badge-neutral'}`} style={{ textTransform: 'capitalize' }}>
                                                     {l.shift === 'day' ? '☀️' : '🌙'} {l.shift}
                                                 </span>
                                             </td>
-                                            <td>{l.machine_name || '—'}</td>
-                                            <td>{l.product_name || '—'}</td>
-                                            <td style={{ fontWeight: 600 }}>{l.target_units}</td>
-                                            <td style={{ fontWeight: 600 }}>{l.actual_units}</td>
-                                            <td>
+                                            <td data-label="Machine">{l.machine_name || '—'}</td>
+                                            <td data-label="Product">{l.product_name || '—'}</td>
+                                            <td data-label="Target" style={{ fontWeight: 600 }}>{l.target_units}</td>
+                                            <td data-label="Actual" style={{ fontWeight: 600 }}>{l.actual_units}</td>
+                                            <td data-label="Perf">
                                                 <span className={`badge ${perf.cls}`}>{perf.pct}%</span>
                                                 <div className="progress-bar" style={{ width: '100px', marginTop: '4px' }}>
                                                     <div className="progress-fill" style={{

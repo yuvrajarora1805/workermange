@@ -206,7 +206,7 @@ export default function LinesPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '20px' }}>
+            <div className="responsive-grid responsive-grid-sidebar">
                 {/* Lines sidebar */}
                 <div className="card" style={{ padding: '12px' }}>
                     <h3 style={{ padding: '12px 12px 16px', fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>

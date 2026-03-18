@@ -127,7 +127,7 @@ export default function EfficiencyPage() {
                 <p>Worker performance based on production (80%) + manager rating (20%)</p>
             </div>
 
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="stats-grid responsive-grid-4">
                 <div className="stat-card">
                     <div className="stat-icon">📊</div>
                     <div className="stat-value">{avgScore}%</div>
@@ -164,57 +164,49 @@ export default function EfficiencyPage() {
                         </div>
                     </div>
                     <div className="table-wrapper">
-                        <table>
+                        <table className="mobile-stack-table">
                             <thead>
                                 <tr>
-                                    <th>Rank</th>
+                                    <th>#</th>
                                     <th>Worker</th>
-                                    <th>Max Perf (80%)</th>
-                                    <th>Best Machine</th>
-                                    <th>Best Product</th>
+                                    <th style={{ width: '120px' }}>Perf (80%)</th>
+                                    <th>Best Machine/Product</th>
                                     <th>Rating (20%)</th>
-                                    <th>Total Score</th>
-                                    <th>Progress</th>
+                                    <th>Score</th>
+                                    <th className="hide-mobile">Progress</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {scores.map((s, i) => (
                                     <tr key={s.worker_id}>
-                                        <td style={{ fontWeight: 700, fontSize: '16px', color: i < 3 ? '#fbbf24' : 'var(--text-muted)', width: '50px' }}>
+                                        <td data-label="Rank" style={{ fontWeight: 700, fontSize: '16px', color: i < 3 ? '#fbbf24' : 'var(--text-muted)', width: '50px' }}>
                                             {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                                         </td>
-                                        <td>
+                                        <td data-label="Worker">
                                             <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.worker_name}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                                                 {s.employee_id} 
                                                 <span className={`badge ${getSkillBadge(s.skill_level)}`} style={{ padding: '0 4px', fontSize: '9px', lineHeight: '1.4' }}>{s.skill_level}</span>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td data-label="Production">
                                             <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '15px' }}>{s.production_score}</span>
                                             <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>/80</span>
-                                            {s.production_logs_count > 0 && (
-                                                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                                                    {s.production_logs_count} {s.production_logs_count === 1 ? 'entry' : 'entries'}
-                                                </div>
-                                            )}
                                         </td>
-                                        <td>
+                                        <td data-label="Specialty">
                                             <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{s.best_machine || '—'}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.best_product}</div>
                                         </td>
-                                        <td>
-                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{s.best_product}</div>
-                                        </td>
-                                        <td>
+                                        <td data-label="Rating">
                                             <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.rating_score}</span>
                                             <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/20</span>
                                         </td>
-                                        <td>
+                                        <td data-label="Total">
                                             <span className={`efficiency-badge ${getEfficiencyClass(s.total_score)}`}>
                                                 {s.total_score}%
                                             </span>
                                         </td>
-                                        <td style={{ minWidth: '150px' }}>
+                                        <td className="hide-mobile" style={{ minWidth: '150px' }}>
                                             <div className="progress-bar">
                                                 <div className="progress-fill" style={{ width: `${s.total_score}%`, background: getProgressColor(s.total_score) }}></div>
                                             </div>
@@ -231,7 +223,7 @@ export default function EfficiencyPage() {
                 <>
                     <div className="card" style={{ marginBottom: '20px' }}>
                         <div className="card-header"><h3 className="card-title">Add/Update Manual Efficiency</h3></div>
-                        <form onSubmit={handleAddManual} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 120px 140px', gap: '12px', alignItems: 'end' }}>
+                        <form onSubmit={handleAddManual} className="responsive-grid-sidebar" style={{ alignItems: 'end' }}>
                             <div className="form-group" style={{ marginBottom: 0 }}>
                                 <label className="form-label">Worker</label>
                                 <select
@@ -298,7 +290,7 @@ export default function EfficiencyPage() {
                     <div className="card">
                         <div className="card-header"><h3 className="card-title">Manual Overrides List</h3></div>
                         <div className="table-wrapper">
-                            <table>
+                            <table className="mobile-stack-table">
                                 <thead>
                                     <tr>
                                         <th>Worker</th>
@@ -311,18 +303,18 @@ export default function EfficiencyPage() {
                                 <tbody>
                                     {manualEffs.map(m => (
                                         <tr key={m.id}>
-                                            <td>
+                                            <td data-label="Worker">
                                                 <div style={{ fontWeight: 600 }}>{m.worker_name}</div>
                                                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{m.employee_id}</div>
                                             </td>
-                                            <td>{m.machine_name}</td>
-                                            <td>{m.product_name || <span style={{ color: 'var(--text-muted)' }}>Any</span>}</td>
-                                            <td>
+                                            <td data-label="Machine">{m.machine_name}</td>
+                                            <td data-label="Product">{m.product_name || <span style={{ color: 'var(--text-muted)' }}>Any</span>}</td>
+                                            <td data-label="Efficiency">
                                                 <span className={`efficiency-badge ${getEfficiencyClass(m.efficiency_pct)}`}>
                                                     {m.efficiency_pct}%
                                                 </span>
                                             </td>
-                                            <td>
+                                            <td data-label="Actions">
                                                 <button className="btn btn-sm btn-ghost" onClick={() => handleDeleteManual(m.id)}>🗑️ Delete</button>
                                             </td>
                                         </tr>

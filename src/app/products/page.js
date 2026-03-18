@@ -89,7 +89,7 @@ export default function ProductsPage() {
                 </div>
                 {products.length > 0 ? (
                     <div className="table-wrapper">
-                        <table>
+                        <table className="mobile-stack-table">
                             <thead>
                                 <tr>
                                     <th>Product Name</th>
@@ -101,12 +101,12 @@ export default function ProductsPage() {
                             <tbody>
                                 {products.map(p => (
                                     <tr key={p.id}>
-                                        <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</td>
-                                        <td>
+                                        <td data-label="Product" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</td>
+                                        <td data-label="SKU">
                                             {p.sku ? <span className="badge badge-info">{p.sku}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                         </td>
-                                        <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{p.description || '—'}</td>
-                                        <td>
+                                        <td data-label="Description" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{p.description || '—'}</td>
+                                        <td data-label="Actions">
                                             <div style={{ display: 'flex', gap: '8px' }}>
                                                 <button className="btn btn-ghost btn-sm" onClick={() => openModal(p)}>✏️ Edit</button>
                                                 <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => deleteProduct(p.id)}>🗑️ Delete</button>

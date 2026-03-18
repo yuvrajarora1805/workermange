@@ -65,7 +65,7 @@ export default function RatingsPage() {
                 <h2>⭐ Manager Ratings</h2>
                 <p>Rate workers 1-4 (contributes 20% to efficiency)</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div className="responsive-grid responsive-grid-2">
                 <div className="card">
                     <div className="card-header"><h3 className="card-title">Submit Rating</h3></div>
                     <form onSubmit={submitRating}>
@@ -129,16 +129,16 @@ export default function RatingsPage() {
                     <div className="card-header"><h3 className="card-title">Recent Ratings</h3></div>
                     {ratings.length > 0 ? (
                         <div className="table-wrapper" style={{maxHeight:'500px',overflowY:'auto'}}>
-                            <table><thead><tr><th>Worker</th><th>Rating</th><th>By</th><th>Date</th></tr></thead>
+                            <table className="mobile-stack-table"><thead><tr><th>Worker</th><th>Rating</th><th className="hide-mobile">By</th><th className="hide-mobile">Date</th></tr></thead>
                                 <tbody>{ratings.slice(0,20).map(r => (
                                     <tr key={r.id}>
-                                        <td><div style={{fontWeight:600,color:'var(--text-primary)'}}>{r.worker_name}</div>
+                                        <td data-label="Worker"><div style={{fontWeight:600,color:'var(--text-primary)'}}>{r.worker_name}</div>
                                             <div style={{fontSize:'11px',color:'var(--text-muted)'}}>{r.employee_id}</div></td>
-                                        <td><div style={{display:'flex',gap:'2px'}}>
+                                        <td data-label="Stars"><div style={{display:'flex',gap:'2px'}}>
                                             {[1,2,3,4].map(s => <span key={s} style={{color:s<=r.rating?'#fbbf24':'var(--text-muted)',fontSize:'16px'}}>★</span>)}
                                         </div></td>
-                                        <td style={{fontSize:'13px',color:'var(--text-muted)'}}>{r.rated_by}</td>
-                                        <td style={{fontSize:'13px',color:'var(--text-muted)'}}>{new Date(r.date).toLocaleDateString()}</td>
+                                        <td className="hide-mobile" style={{fontSize:'13px',color:'var(--text-muted)'}}>{r.rated_by}</td>
+                                        <td className="hide-mobile" style={{fontSize:'13px',color:'var(--text-muted)'}}>{new Date(r.date).toLocaleDateString()}</td>
                                     </tr>
                                 ))}</tbody></table>
                         </div>
