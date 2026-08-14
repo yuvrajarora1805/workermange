@@ -36,11 +36,27 @@ export async function POST(request) {
             await pool.query('DELETE FROM daily_assignments WHERE id IN (?)', [idsToDelete]);
         }
 
+        // Check for current active shift and close it if exists
+        const [activeShift] = await pool.query('SELECT id, start_time FROM worker_shift_logs WHERE worker_id = ? AND end_time IS NULL LIMIT 1', [worker_id]);
+        if (activeShift.length > 0) {
+            const hrs = (new Date() - new Date(activeShift[0].start_time)) / 3600000;
+            await pool.query('UPDATE worker_shift_logs SET end_time = NOW(), total_hours = ? WHERE id = ?', [hrs, activeShift[0].id]);
+        }
+
         // Insert new manual assignment with shift
         await pool.query(
             'INSERT INTO daily_assignments (worker_id, machine_id, line_id, product_id, date, shift, is_manual) VALUES (?, ?, ?, ?, ?, ?, 1)',
             [worker_id, machine_id, machine.line_id, machine.current_product_id, assignDate, shift]
         );
+
+        // Open new shift log only if assigning for today
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (assignDate === todayStr) {
+            await pool.query(
+                'INSERT INTO worker_shift_logs (worker_id, machine_id, product_id, start_time) VALUES (?, ?, ?, NOW())',
+                [worker_id, machine_id, machine.current_product_id]
+            );
+        }
 
         return NextResponse.json({ success: true, message: `Manual ${shift} shift assignment saved` });
     } catch (error) {

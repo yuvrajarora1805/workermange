@@ -12,6 +12,9 @@ export default function RatingsPage() {
     const [comments, setComments] = useState('');
     const [ratedBy, setRatedBy] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const [workerSearch, setWorkerSearch] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [filteredWorkers, setFilteredWorkers] = useState([]);
 
     useEffect(() => { loadData(); }, []);
 
@@ -21,10 +24,33 @@ export default function RatingsPage() {
                 fetch('/api/workers').then(r => r.json()),
                 fetch('/api/ratings').then(r => r.json()),
             ]);
-            if (wRes.success) setWorkers(wRes.data);
+            if (wRes.success) {
+                setWorkers(wRes.data);
+                setFilteredWorkers(wRes.data.slice(0, 100)); // Initial limited list
+            }
             if (rRes.success) setRatings(rRes.data);
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
+    }
+
+    // Handle worker search filtering
+    useEffect(() => {
+        if (!workerSearch) {
+            setFilteredWorkers(workers.slice(0, 100));
+            return;
+        }
+        const term = workerSearch.toLowerCase();
+        const filtered = workers.filter(w => 
+            w.name.toLowerCase().includes(term) || 
+            w.employee_id.toLowerCase().includes(term)
+        ).slice(0, 50); // Limit display for performance
+        setFilteredWorkers(filtered);
+    }, [workerSearch, workers]);
+
+    function selectWorker(w) {
+        setSelectedWorker(w.id);
+        setWorkerSearch(`${w.name} (${w.employee_id})`);
+        setShowDropdown(false);
     }
 
     async function submitRating(e) {
@@ -71,17 +97,43 @@ export default function RatingsPage() {
                     <form onSubmit={submitRating}>
                         <div className="form-group">
                             <label className="form-label">Worker *</label>
-                            <select
-                                id="rating-worker"
-                                name="worker_id"
-                                className="form-select"
-                                value={selectedWorker}
-                                onChange={e => setSelectedWorker(e.target.value)}
-                                required
-                            >
-                                <option value="">Choose...</option>
-                                {workers.map(w => <option key={w.id} value={w.id}>{w.name} ({w.employee_id})</option>)}
-                            </select>
+                            <div className="searchable-dropdown-container">
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Search by Name or ID (e.g. CHABILE)"
+                                    value={workerSearch}
+                                    onChange={(e) => {
+                                        setWorkerSearch(e.target.value);
+                                        setShowDropdown(true);
+                                        if (selectedWorker) setSelectedWorker(''); // Clear selection if typing
+                                    }}
+                                    onFocus={() => setShowDropdown(true)}
+                                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                                    autoComplete="off"
+                                />
+                                {showDropdown && filteredWorkers.length > 0 && (
+                                    <div className="searchable-dropdown-list">
+                                        {filteredWorkers.map(w => (
+                                            <div 
+                                                key={w.id} 
+                                                className="searchable-dropdown-item"
+                                                onClick={() => selectWorker(w)}
+                                            >
+                                                <div style={{fontWeight: 600, fontSize: '14px'}}>{w.name}</div>
+                                                <div className="searchable-dropdown-info">ID: {w.employee_id} • Currently: {w.rating_score ? w.rating_score + '/20' : 'No rating'}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {showDropdown && workerSearch && filteredWorkers.length === 0 && (
+                                    <div className="searchable-dropdown-list">
+                                        <div className="searchable-dropdown-item" style={{color: 'var(--text-muted)', textAlign: 'center'}}>
+                                            No workers found matching "{workerSearch}"
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Rating *</label>

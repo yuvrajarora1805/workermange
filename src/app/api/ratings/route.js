@@ -22,7 +22,7 @@ export async function GET(request) {
         if (conditions.length > 0) {
             query += ' WHERE ' + conditions.join(' AND ');
         }
-        query += ' ORDER BY mr.date DESC, w.name ASC';
+        query += ' ORDER BY mr.date DESC, mr.id DESC';
 
         const [rows] = await pool.query(query, params);
         return NextResponse.json({ success: true, data: rows });
@@ -47,12 +47,42 @@ export async function POST(request) {
 
         const ratingDate = date || new Date().toISOString().split('T')[0];
 
-        const [result] = await pool.query(
-            'INSERT INTO manager_ratings (worker_id, rating, comments, rated_by, date) VALUES (?, ?, ?, ?, ?)',
-            [worker_id, rating, comments || null, rated_by || 'Manager', ratingDate]
-        );
+        // START SYNC LOGIC
+        const skillMap = {
+            1: 'beginner',
+            2: 'intermediate',
+            3: 'advanced',
+            4: 'expert'
+        };
+        const newSkill = skillMap[rating];
 
-        return NextResponse.json({ success: true, data: { id: result.insertId } }, { status: 201 });
+        // Use a transaction or sequential updates to sync both tables
+        const connection = await pool.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // 1. Insert the rating history
+            const [ratingResult] = await connection.query(
+                'INSERT INTO manager_ratings (worker_id, rating, comments, rated_by, date) VALUES (?, ?, ?, ?, ?)',
+                [worker_id, rating, comments || null, rated_by || 'Manager', ratingDate]
+            );
+
+            // 2. Synchronize the skill level in workers table
+            if (newSkill) {
+                await connection.query(
+                    'UPDATE workers SET skill_level = ?, rating = ? WHERE id = ?',
+                    [newSkill, rating, worker_id]
+                );
+            }
+
+            await connection.commit();
+            return NextResponse.json({ success: true, data: { id: ratingResult.insertId, skill_updated: newSkill } }, { status: 201 });
+        } catch (err) {
+            await connection.rollback();
+            throw err;
+        } finally {
+            connection.release();
+        }
     } catch (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

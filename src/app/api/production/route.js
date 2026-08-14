@@ -10,11 +10,13 @@ export async function GET(request) {
 
         let query = `
             SELECT pl.*, w.name as worker_name, w.employee_id, 
-                   m.name as machine_name, l.name as line_name
+                   m.name as machine_name, l.name as line_name,
+                   p.name as product_name
             FROM production_logs pl
             JOIN workers w ON w.id = pl.worker_id
             LEFT JOIN machines m ON m.id = pl.machine_id
             LEFT JOIN \`lines\` l ON l.id = m.line_id
+            LEFT JOIN products p ON p.id = pl.product_id
         `;
         const conditions = [];
         const params = [];
@@ -84,6 +86,20 @@ export async function POST(request) {
         }
 
         return NextResponse.json({ success: true, message: `Logged ${logs.length} entries`, ids: results, shift }, { status: 201 });
+    } catch (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+}
+
+// DELETE production log
+export async function DELETE(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        if (!id) return NextResponse.json({ success: false, error: 'Log ID required' }, { status: 400 });
+
+        await pool.query('DELETE FROM production_logs WHERE id = ?', [id]);
+        return NextResponse.json({ success: true, message: 'Log deleted successfully' });
     } catch (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
     }

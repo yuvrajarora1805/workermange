@@ -13,6 +13,7 @@ export default function Dashboard() {
     });
     const [recentAssignments, setRecentAssignments] = useState([]);
     const [topWorkers, setTopWorkers] = useState([]);
+    const [activeDowntimes, setActiveDowntimes] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const currentShift = (() => {
@@ -26,24 +27,17 @@ export default function Dashboard() {
 
     async function loadDashboard() {
         try {
-            const [workersRes, linesRes, attendanceRes, assignmentsRes, efficiencyRes] = await Promise.all([
-                fetch('/api/workers').then(r => r.json()),
-                fetch('/api/lines').then(r => r.json()),
-                fetch('/api/attendance').then(r => r.json()),
+            const todayStr = new Date().toISOString().split('T')[0];
+            const [statsRes, assignmentsRes, efficiencyRes, downtimeRes] = await Promise.all([
+                fetch(`/api/stats?shift=${currentShift}`).then(r => r.json()),
                 fetch(`/api/assignments?shift=${currentShift}`).then(r => r.json()),
-                fetch('/api/efficiency').then(r => r.json()),
+                fetch('/api/efficiency?limit=5').then(r => r.json()), // Just get top 5
+                fetch(`/api/downtime?date=${todayStr}`).then(r => r.json()),
             ]);
 
-            const totalMachines = linesRes.data?.reduce((sum, l) => sum + parseInt(l.machine_count || 0), 0) || 0;
-
-            setStats({
-                totalWorkers: workersRes.data?.length || 0,
-                presentToday: attendanceRes.data?.summary?.present || 0,
-                totalLines: linesRes.data?.length || 0,
-                totalMachines,
-                assignedToday: assignmentsRes.data?.summary?.total_assigned || 0,
-                benchToday: assignmentsRes.data?.summary?.total_bench || 0,
-            });
+            if (statsRes.success) {
+                setStats(statsRes.data);
+            }
 
             // Flatten assignments for recent view
             const allAssignments = [];
@@ -57,8 +51,13 @@ export default function Dashboard() {
             setRecentAssignments(allAssignments.slice(0, 10));
 
             // Top 5 workers
-            if (efficiencyRes.data) {
-                setTopWorkers(efficiencyRes.data.slice(0, 5));
+            if (efficiencyRes.success) {
+                setTopWorkers(efficiencyRes.data);
+            }
+
+            // Active downtimes
+            if (downtimeRes.success) {
+                setActiveDowntimes(downtimeRes.data.filter(l => !l.end_time));
             }
         } catch (err) {
             console.error('Dashboard load error:', err);
@@ -95,6 +94,30 @@ export default function Dashboard() {
                 <p>Overview of today&apos;s operations ({new Date().toLocaleDateString()})</p>
             </div>
 
+            {activeDowntimes.length > 0 && (
+                <div className="card" style={{ borderLeft: '4px solid var(--danger, #ef4444)', background: 'rgba(239, 68, 68, 0.05)', marginBottom: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '24px' }}>🚨</span>
+                            <div>
+                                <h4 style={{ margin: 0, color: 'var(--danger, #ef4444)', fontWeight: 600 }}>Active Downtime Alert</h4>
+                                <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: 'var(--text-muted)' }}>
+                                    {activeDowntimes.length} line(s) currently halted.
+                                </p>
+                            </div>
+                        </div>
+                        <a href="/downtime" className="btn btn-sm btn-danger">Manage Downtime</a>
+                    </div>
+                    <div style={{ padding: '0 15px 15px 15px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        {activeDowntimes.map(dt => (
+                            <span key={dt.id} className="badge badge-danger" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger, #ef4444)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                                ⏱️ {dt.is_all_lines ? 'ALL LINES' : dt.line_name}: &ldquo;{dt.reason}&rdquo;
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="stats-grid">
                 <div className="stat-card">
                     <div className="stat-icon">👷</div>
@@ -114,7 +137,7 @@ export default function Dashboard() {
                 <div className="stat-card">
                     <div className="stat-icon">🔧</div>
                     <div className="stat-value">{stats.assignedToday}/{stats.totalMachines}</div>
-                    <div className="stat-label">Machines Filled</div>
+                    <div className="stat-label">Workers Assigned to Machine</div>
                 </div>
             </div>
 

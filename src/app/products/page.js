@@ -7,8 +7,9 @@ export default function ProductsPage() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editProduct, setEditProduct] = useState(null);
-    const [form, setForm] = useState({ name: '', sku: '', description: '' });
+    const [form, setForm] = useState({ name: '', sap_code: '', description: '', hourly_target: '', target_12h: '' });
     const [submitting, setSubmitting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
 
     useEffect(() => { loadProducts(); }, []);
 
@@ -23,9 +24,43 @@ export default function ProductsPage() {
 
     function openModal(product = null) {
         setEditProduct(product);
-        setForm(product ? { name: product.name, sku: product.sku || '', description: product.description || '' } : { name: '', sku: '', description: '' });
+        const hourly = product ? (product.hourly_target !== null && product.hourly_target !== undefined ? parseFloat(product.hourly_target) : '') : '';
+        const target12 = hourly !== '' ? Math.round(hourly * 12) : '';
+        setForm(product ? { 
+            name: product.name, 
+            sap_code: product.sap_code || '', 
+            description: product.description || '', 
+            hourly_target: hourly,
+            target_12h: target12
+        } : { 
+            name: '', 
+            sap_code: '', 
+            description: '', 
+            hourly_target: '',
+            target_12h: ''
+        });
         setShowModal(true);
     }
+
+    const handleTarget12hChange = (val) => {
+        const num = val ? parseFloat(val) : '';
+        const hourly = num !== '' ? parseFloat((num / 12).toFixed(4)) : '';
+        setForm(prev => ({
+            ...prev,
+            target_12h: val,
+            hourly_target: hourly
+        }));
+    };
+
+    const handleHourlyTargetChange = (val) => {
+        const num = val ? parseFloat(val) : '';
+        const target12 = num !== '' ? Math.round(num * 12) : '';
+        setForm(prev => ({
+            ...prev,
+            hourly_target: val,
+            target_12h: target12
+        }));
+    };
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -78,7 +113,19 @@ export default function ProductsPage() {
                         <h2>📦 Products</h2>
                         <p>Manage products assigned to machines for efficiency tracking</p>
                     </div>
-                    <button className="btn btn-primary" onClick={() => openModal()}>+ Add Product</button>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div className="search-box">
+                            <span className="search-icon">🔍</span>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                placeholder="Search product/SKU..." 
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <button className="btn btn-primary" onClick={() => openModal()}>+ Add Product</button>
+                    </div>
                 </div>
             </div>
 
@@ -94,16 +141,28 @@ export default function ProductsPage() {
                                 <tr>
                                     <th>Product Name</th>
                                     <th>SKU</th>
+                                    <th>12-Hour Target</th>
+                                    <th>Hourly Target</th>
                                     <th>Description</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {products.map(p => (
+                                {products
+                                    .filter(p => !searchTerm ||
+                                        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        (p.sap_code && p.sap_code.toLowerCase().includes(searchTerm.toLowerCase())))
+                                    .map(p => (
                                     <tr key={p.id}>
                                         <td data-label="Product" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</td>
                                         <td data-label="SKU">
-                                            {p.sku ? <span className="badge badge-info">{p.sku}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                            {p.sap_code ? <span className="badge badge-info">{p.sap_code}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                        </td>
+                                        <td data-label="12h Target">
+                                            {p.hourly_target ? <strong>{Math.round(parseFloat(p.hourly_target) * 12)} / 12hr</strong> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                                        </td>
+                                        <td data-label="Hourly Target">
+                                            {p.hourly_target ? <strong>{parseFloat(p.hourly_target)} / hr</strong> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                                         </td>
                                         <td data-label="Description" style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{p.description || '—'}</td>
                                         <td data-label="Actions">
@@ -151,10 +210,10 @@ export default function ProductsPage() {
                                 <label className="form-label">SKU / Code</label>
                                 <input
                                     id="product-sku"
-                                    name="product_sku"
+                                    name="product_sap_code"
                                     className="form-input"
-                                    value={form.sku}
-                                    onChange={e => setForm({ ...form, sku: e.target.value })}
+                                    value={form.sap_code}
+                                    onChange={e => setForm({ ...form, sap_code: e.target.value })}
                                     placeholder="e.g. SKU-001 (optional)"
                                 />
                             </div>
@@ -168,6 +227,33 @@ export default function ProductsPage() {
                                     onChange={e => setForm({ ...form, description: e.target.value })}
                                     placeholder="Optional description"
                                 />
+                            </div>
+                            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">12-Hour Target</label>
+                                    <input
+                                        type="number"
+                                        id="product-target-12h"
+                                        name="target_12h"
+                                        className="form-input"
+                                        value={form.target_12h}
+                                        onChange={e => handleTarget12hChange(e.target.value)}
+                                        placeholder="Expected in 12 hours"
+                                    />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Hourly Target</label>
+                                    <input
+                                        type="number"
+                                        step="any"
+                                        id="product-target-hourly"
+                                        name="hourly_target"
+                                        className="form-input"
+                                        value={form.hourly_target}
+                                        onChange={e => handleHourlyTargetChange(e.target.value)}
+                                        placeholder="Hourly (calculated)"
+                                    />
+                                </div>
                             </div>
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>Cancel</button>

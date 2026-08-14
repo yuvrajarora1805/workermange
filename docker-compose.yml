@@ -1,6 +1,7 @@
 services:
   web:
     build: .
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -13,6 +14,7 @@ services:
 
   db:
     image: mariadb:latest
+    restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=workermanage

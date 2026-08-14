@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
+    color-scheme: dark;
     /* Colors */
     --bg-primary: #0a0e1a;
     --bg-secondary: #111827;
@@ -161,7 +162,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: 260px;
-    padding: 28px 32px;
+    padding: 92px 32px 28px;
     min-height: 100vh;
 }
 
@@ -422,8 +423,9 @@ tbody tr:last-child td {
     color: var(--text-muted);
 }
 
-.form-select option {
-    background: var(--bg-secondary);
+.form-select option, .form-input option {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
 }
 
 .form-textarea {
@@ -1119,4 +1121,46 @@ tbody tr:last-child td {
     .responsive-grid-sidebar {
         grid-template-columns: 280px 1fr;
     }
+}
+/* ===== SEARCHABLE DROPDOWN ===== */
+.searchable-dropdown-container {
+    position: relative;
+    width: 100%;
+}
+
+.searchable-dropdown-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 250px;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-sm);
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    margin-top: 4px;
+    backdrop-filter: blur(20px);
+}
+
+.searchable-dropdown-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition);
+}
+
+.searchable-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.searchable-dropdown-item:hover {
+    background: var(--bg-glass-hover);
+}
+
+.searchable-dropdown-info {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
 }

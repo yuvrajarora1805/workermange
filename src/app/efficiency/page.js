@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function EfficiencyPage() {
     const [scores, setScores] = useState([]);
     const [loading, setLoading] = useState(true);
-
+    const [stats, setStats] = useState({ total_workers: 0, avg_score: 0, high_performers: 0, low_performers: 0 });
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    
     const [activeTab, setActiveTab] = useState('leaderboard');
     const [manualEffs, setManualEffs] = useState([]);
     const [workers, setWorkers] = useState([]);
@@ -15,16 +18,21 @@ export default function EfficiencyPage() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => { 
-        loadEfficiency(); 
+        loadEfficiency(page); 
         loadMetadata();
         loadManualEffs();
-    }, []);
+    }, [page]);
 
-    async function loadEfficiency() {
+    async function loadEfficiency(p = 1) {
+        setLoading(true);
         try {
-            const res = await fetch('/api/efficiency');
+            const res = await fetch(`/api/efficiency?page=${p}&limit=50`);
             const data = await res.json();
-            if (data.success) setScores(data.data);
+            if (data.success) {
+                setScores(data.data);
+                setStats(data.global_stats);
+                setTotalPages(data.pagination.total_pages);
+            }
         } catch (err) { console.error(err); }
         finally { setLoading(false); }
     }
@@ -99,32 +107,42 @@ export default function EfficiencyPage() {
         return 'var(--danger)';
     }
 
-    function getSkillBadge(level) {
+    function getSkillBadge(val) {
         const map = {
-            expert: 'badge-success',
-            advanced: 'badge-info',
-            intermediate: 'badge-warning',
-            beginner: 'badge-danger',
+            4: 'badge-success', 'expert': 'badge-success',
+            3: 'badge-info', 'advanced': 'badge-info',
+            2: 'badge-warning', 'intermediate': 'badge-warning',
+            1: 'badge-danger', 'beginner': 'badge-danger'
         };
-        return map[level] || 'badge-neutral';
+        return map[val?.toString().toLowerCase()] || 'badge-neutral';
+    }
+
+    function getSkillLabel(val) {
+        const map = {
+            4: 'Expert', 'expert': 'Expert',
+            3: 'Advanced', 'advanced': 'Advanced',
+            2: 'Intermediate', 'intermediate': 'Intermediate',
+            1: 'Beginner', 'beginner': 'Beginner'
+        };
+        return map[val?.toString().toLowerCase()] || val || 'Unknown';
     }
 
     if (loading) {
         return <div className="loading-overlay"><div className="loader"></div><p>Calculating efficiency...</p></div>;
     }
 
-    const avgScore = scores.length > 0
-        ? (scores.reduce((s, w) => s + w.total_score, 0) / scores.length).toFixed(1)
-        : 0;
-
-    const highPerformers = scores.filter(s => s.total_score >= 70).length;
-    const lowPerformers = scores.filter(s => s.total_score < 30).length;
+    const avgScore = stats.avg_score || 0;
+    const highPerformers = stats.high_performers || 0;
+    const lowPerformers = stats.low_performers || 0;
+    const totalWorkers = stats.total_workers || 0;
 
     return (
         <>
             <div className="page-header">
-                <h2>📈 Efficiency Reports</h2>
-                <p>Worker performance based on production (80%) + manager rating (20%)</p>
+                <div>
+                    <h2>📈 Efficiency Reports</h2>
+                    <p>Worker performance based on production (80%) + manager rating (20%)</p>
+                </div>
             </div>
 
             <div className="stats-grid responsive-grid-4">
@@ -145,7 +163,7 @@ export default function EfficiencyPage() {
                 </div>
                 <div className="stat-card">
                     <div className="stat-icon">👷</div>
-                    <div className="stat-value">{scores.length}</div>
+                    <div className="stat-value">{totalWorkers}</div>
                     <div className="stat-label">Total Workers</div>
                 </div>
             </div>
@@ -177,44 +195,80 @@ export default function EfficiencyPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {scores.map((s, i) => (
-                                    <tr key={s.worker_id}>
-                                        <td data-label="Rank" style={{ fontWeight: 700, fontSize: '16px', color: i < 3 ? '#fbbf24' : 'var(--text-muted)', width: '50px' }}>
-                                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
-                                        </td>
-                                        <td data-label="Worker">
-                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.worker_name}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                                                {s.employee_id} 
-                                                <span className={`badge ${getSkillBadge(s.skill_level)}`} style={{ padding: '0 4px', fontSize: '9px', lineHeight: '1.4' }}>{s.skill_level}</span>
-                                            </div>
-                                        </td>
-                                        <td data-label="Production">
-                                            <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '15px' }}>{s.production_score}</span>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>/80</span>
-                                        </td>
-                                        <td data-label="Specialty">
-                                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>{s.best_machine || '—'}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.best_product}</div>
-                                        </td>
-                                        <td data-label="Rating">
-                                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{s.rating_score}</span>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/20</span>
-                                        </td>
-                                        <td data-label="Total">
-                                            <span className={`efficiency-badge ${getEfficiencyClass(s.total_score)}`}>
-                                                {s.total_score}%
-                                            </span>
-                                        </td>
-                                        <td className="hide-mobile" style={{ minWidth: '150px' }}>
-                                            <div className="progress-bar">
-                                                <div className="progress-fill" style={{ width: `${s.total_score}%`, background: getProgressColor(s.total_score) }}></div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {scores.map((s, i) => {
+                                    const rank = (i + (page - 1) * 50);
+                                    const isSpecial = rank < 3;
+                                    const rankDisplay = rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `#${rank + 1}`;
+                                    
+                                    return (
+                                        <React.Fragment key={s.worker_id}>
+                                            {/* separator line for every worker row */}
+                                            <tr>
+                                                <td colSpan="7" style={{ padding: '0', borderBottom: '1px solid var(--border-color)', opacity: 0.5 }}></td>
+                                            </tr>
+                                            <tr style={{ borderBottom: 'none' }}>
+                                                <td data-label="Rank" style={{ fontWeight: 700, fontSize: '16px', color: isSpecial ? '#fbbf24' : 'var(--text-muted)', width: '50px' }}>
+                                                    {rankDisplay}
+                                                </td>
+                                                <td data-label="Worker">
+                                                    <div style={{ fontWeight: 700, color: 'black', textTransform: 'uppercase', fontSize: '14px' }}>{s.worker_name}</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                                        {s.employee_id} 
+                                                        <span className={`badge ${getSkillBadge(s.skill_level || s.rating)}`} style={{ padding: '0 4px', fontSize: '9px', lineHeight: '1.4' }}>
+                                                            {getSkillLabel(s.skill_level || s.rating)}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td data-label="Production">
+                                                    <span style={{ fontWeight: 700, color: 'var(--success)', fontSize: '15px' }}>{parseFloat(s.production_score || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>/80</span>
+                                                </td>
+                                                <td data-label="Specialty">
+                                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '13px' }}>
+                                                        {s.line_name && s.line_name !== '—' ? `${s.line_name} / ` : ''}
+                                                        {s.best_machine || '—'}
+                                                    </div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.best_product || '—'}</div>
+                                                </td>
+                                                <td data-label="Rating">
+                                                    <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{parseFloat(s.rating_score || 0).toFixed(2)}</span>
+                                                    <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>/20</span>
+                                                </td>
+                                                <td data-label="Total">
+                                                    <span className={`efficiency-badge ${getEfficiencyClass(s.total_score)}`} style={{ fontWeight: 700 }}>
+                                                        {parseFloat(s.total_score || 0).toFixed(2)}%
+                                                    </span>
+                                                </td>
+                                                <td className="hide-mobile" style={{ minWidth: '150px' }}>
+                                                    <div className="progress-bar">
+                                                        <div className="progress-fill" style={{ width: `${s.total_score}%`, background: getProgressColor(s.total_score) }}></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginTop: '24px', padding: '16px' }}>
+                        <button 
+                            className="btn btn-ghost" 
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                        >
+                            ← Previous
+                        </button>
+                        <span style={{ fontWeight: 600 }}>Page {page} of {totalPages}</span>
+                        <button 
+                            className="btn btn-ghost" 
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                        >
+                            Next →
+                        </button>
                     </div>
                 </div>
             )}

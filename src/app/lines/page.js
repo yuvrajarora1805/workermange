@@ -10,9 +10,16 @@ export default function LinesPage() {
     const [loading, setLoading] = useState(true);
     const [showLineModal, setShowLineModal] = useState(false);
     const [showMachineModal, setShowMachineModal] = useState(false);
+    const [showEditMachineModal, setShowEditMachineModal] = useState(false);
+    const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
     const [editLine, setEditLine] = useState(null);
+    const [editMachine, setEditMachine] = useState(null);
     const [lineForm, setLineForm] = useState({ name: '', description: '' });
     const [machineForm, setMachineForm] = useState({ name: '', line_id: '', worker_capacity: 1 });
+    const [editMachineForm, setEditMachineForm] = useState({ name: '' });
+    const [bulkAssignForm, setBulkAssignForm] = useState({ product_id: '' });
+    const [bulkAssigning, setBulkAssigning] = useState(false);
+    const [lineSearch, setLineSearch] = useState('');
 
     useEffect(() => { loadLines(); }, []);
 
@@ -84,6 +91,26 @@ export default function LinesPage() {
         } catch (err) { showToast('Failed to add machine', 'error'); }
     }
 
+    async function handleEditMachineSubmit(e) {
+        e.preventDefault();
+        try {
+            const res = await fetch('/api/machines', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: editMachine.id, name: editMachineForm.name }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setShowEditMachineModal(false);
+                setEditMachine(null);
+                setEditMachineForm({ name: '' });
+                loadMachines(selectedLine);
+                loadLines();
+                showToast('Machine updated!', 'success');
+            }
+        } catch (err) { showToast('Failed to update machine', 'error'); }
+    }
+
     async function deleteLine(id) {
         if (!confirm('Delete this line and all its machines?')) return;
         try {
@@ -107,6 +134,40 @@ export default function LinesPage() {
                 showToast('Machine deleted', 'success');
             }
         } catch (err) { showToast('Failed to delete', 'error'); }
+    }
+
+    async function handleBulkAssignProduct(e) {
+        e.preventDefault();
+        if (!bulkAssignForm.product_id) {
+            showToast('Please select a product', 'error');
+            return;
+        }
+
+        setBulkAssigning(true);
+        try {
+            const res = await fetch('/api/machines/assign-product-to-line', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    line_id: selectedLine,
+                    product_id: parseInt(bulkAssignForm.product_id)
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(data.data.message, 'success');
+                setShowBulkAssignModal(false);
+                setBulkAssignForm({ product_id: '' });
+                loadMachines(selectedLine);
+                loadLines();
+            } else {
+                showToast(data.error || 'Failed to assign', 'error');
+            }
+        } catch (err) {
+            showToast('Failed to bulk assign product', 'error');
+        } finally {
+            setBulkAssigning(false);
+        }
     }
 
     async function updateMachineProduct(machineId, productId) {
@@ -181,6 +242,469 @@ export default function LinesPage() {
         setTimeout(() => toast.remove(), 3000);
     }
 
+    function exportMachineLayout() {
+        if (!selectedLine) {
+            showToast('Please select a line first', 'error');
+            return;
+        }
+
+        const line = lines.find(l => l.id === selectedLine);
+        const lineMachines = machines;
+
+        // Create HTML content
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${line.name} - Machine Layout</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                        background-color: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    }
+                    h1 {
+                        color: #333;
+                        border-bottom: 3px solid #6366f1;
+                        padding-bottom: 10px;
+                    }
+                    .line-info {
+                        background-color: #f8f9fa;
+                        padding: 15px;
+                        border-radius: 6px;
+                        margin-bottom: 30px;
+                        border-left: 4px solid #6366f1;
+                    }
+                    .line-info p {
+                        margin: 8px 0;
+                        color: #555;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                    }
+                    th {
+                        background-color: #6366f1;
+                        color: white;
+                        padding: 12px;
+                        text-align: left;
+                        font-weight: 600;
+                    }
+                    td {
+                        padding: 12px;
+                        border-bottom: 1px solid #ddd;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9fafb;
+                    }
+                    tr:hover {
+                        background-color: #f0f0f0;
+                    }
+                    .status-active {
+                        color: #10b981;
+                        font-weight: 600;
+                    }
+                    .status-inactive {
+                        color: #ef4444;
+                        font-weight: 600;
+                    }
+                    .capacity-badge {
+                        background-color: #6366f1;
+                        color: white;
+                        padding: 4px 8px;
+                        border-radius: 4px;
+                        font-size: 12px;
+                    }
+                    .timestamp {
+                        text-align: right;
+                        margin-top: 30px;
+                        color: #999;
+                        font-size: 12px;
+                    }
+                    @media print {
+                        body { background-color: white; }
+                        .container { box-shadow: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>🏭 Machine Layout Report</h1>
+
+                    <div class="line-info">
+                        <p><strong>Production Line:</strong> ${line.name}</p>
+                        <p><strong>Description:</strong> ${line.description || 'No description'}</p>
+                        <p><strong>Total Machines:</strong> ${lineMachines.length}</p>
+                        <p><strong>Active Machines:</strong> ${lineMachines.filter(m => m.is_active).length}</p>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Position</th>
+                                <th>Machine Name</th>
+                                <th>Status</th>
+                                <th>Worker Capacity</th>
+                                <th>Current Product</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${lineMachines.map(m => {
+                                const product = products.find(p => p.id === m.current_product_id);
+                                return `
+                                    <tr>
+                                        <td>#${m.position}</td>
+                                        <td>${m.name}</td>
+                                        <td><span class="${m.is_active ? 'status-active' : 'status-inactive'}">${m.is_active ? '✓ Active' : '✗ Inactive'}</span></td>
+                                        <td><span class="capacity-badge">${m.worker_capacity} worker${m.worker_capacity > 1 ? 's' : ''}</span></td>
+                                        <td>${product ? product.name : 'None'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="timestamp">
+                        Generated on ${new Date().toLocaleString()}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        // Create blob and download
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${line.name}-layout-${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast('Machine layout exported!', 'success');
+    }
+
+    function exportToCSV() {
+        if (!selectedLine) {
+            showToast('Please select a line first', 'error');
+            return;
+        }
+
+        const line = lines.find(l => l.id === selectedLine);
+        const lineMachines = machines;
+
+        // Create CSV content
+        const headers = ['Position', 'Machine Name', 'Status', 'Worker Capacity', 'Current Product'];
+        const rows = lineMachines.map(m => {
+            const product = products.find(p => p.id === m.current_product_id);
+            return [
+                `#${m.position}`,
+                m.name,
+                m.is_active ? 'Active' : 'Inactive',
+                m.worker_capacity,
+                product ? product.name : 'None'
+            ];
+        });
+
+        // Build CSV string
+        let csvContent = `Machine Layout - ${line.name}\n`;
+        csvContent += `Exported: ${new Date().toLocaleString()}\n\n`;
+        csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+        csvContent += rows.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${line.name}-layout-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast('Machine layout exported as CSV!', 'success');
+    }
+
+    async function exportAllLinesLayout() {
+        if (lines.length === 0) {
+            showToast('No lines to export', 'error');
+            return;
+        }
+
+        // Fetch all machines for all lines
+        const allMachinesData = {};
+        for (const line of lines) {
+            try {
+                const res = await fetch(`/api/machines?line_id=${line.id}`);
+                const data = await res.json();
+                if (data.success) {
+                    allMachinesData[line.id] = data.data;
+                }
+            } catch (err) {
+                console.error(`Failed to load machines for line ${line.id}`, err);
+                allMachinesData[line.id] = [];
+            }
+        }
+
+        // Create HTML content
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>All Production Lines - Machine Layout</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        margin: 20px;
+                        background-color: #f5f5f5;
+                    }
+                    .container {
+                        max-width: 1200px;
+                        margin: 0 auto;
+                    }
+                    .header {
+                        background-color: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        margin-bottom: 20px;
+                    }
+                    .header h1 {
+                        color: #333;
+                        border-bottom: 3px solid #6366f1;
+                        padding-bottom: 10px;
+                        margin: 0;
+                    }
+                    .header p {
+                        color: #666;
+                        margin: 10px 0 0 0;
+                    }
+                    .line-section {
+                        background-color: white;
+                        padding: 25px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        margin-bottom: 20px;
+                        page-break-inside: avoid;
+                    }
+                    .line-section h2 {
+                        color: #6366f1;
+                        border-bottom: 2px solid #6366f1;
+                        padding-bottom: 10px;
+                        margin-top: 0;
+                    }
+                    .line-info {
+                        background-color: #f8f9fa;
+                        padding: 12px;
+                        border-radius: 6px;
+                        margin-bottom: 15px;
+                        border-left: 4px solid #6366f1;
+                        font-size: 14px;
+                    }
+                    .line-info p {
+                        margin: 5px 0;
+                        color: #555;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                    }
+                    th {
+                        background-color: #6366f1;
+                        color: white;
+                        padding: 10px;
+                        text-align: left;
+                        font-weight: 600;
+                        font-size: 13px;
+                    }
+                    td {
+                        padding: 10px;
+                        border-bottom: 1px solid #ddd;
+                        font-size: 13px;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9fafb;
+                    }
+                    .status-active {
+                        color: #10b981;
+                        font-weight: 600;
+                    }
+                    .status-inactive {
+                        color: #ef4444;
+                        font-weight: 600;
+                    }
+                    .capacity-badge {
+                        background-color: #6366f1;
+                        color: white;
+                        padding: 3px 6px;
+                        border-radius: 3px;
+                        font-size: 11px;
+                    }
+                    .empty-message {
+                        color: #999;
+                        font-style: italic;
+                        padding: 15px;
+                    }
+                    .timestamp {
+                        text-align: right;
+                        margin-top: 30px;
+                        color: #999;
+                        font-size: 12px;
+                        background-color: white;
+                        padding: 20px;
+                        border-radius: 8px;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    }
+                    @media print {
+                        body { background-color: white; }
+                        .line-section { box-shadow: none; }
+                        .header { box-shadow: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🏭 Complete Production Lines & Machines Report</h1>
+                        <p>All production lines and their machine layouts</p>
+                    </div>
+
+                    ${lines.map(line => {
+                        const lineMachines = allMachinesData[line.id] || [];
+                        return `
+                            <div class="line-section">
+                                <h2>${line.name}</h2>
+
+                                <div class="line-info">
+                                    <p><strong>Description:</strong> ${line.description || 'No description'}</p>
+                                    <p><strong>Status:</strong> <span class="${line.is_active ? 'status-active' : 'status-inactive'}">${line.is_active ? '✓ Active' : '✗ Inactive'}</span></p>
+                                    <p><strong>Total Machines:</strong> ${lineMachines.length} | <strong>Active:</strong> ${lineMachines.filter(m => m.is_active).length}</p>
+                                </div>
+
+                                ${lineMachines.length > 0 ? `
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Position</th>
+                                                <th>Machine Name</th>
+                                                <th>Status</th>
+                                                <th>Worker Capacity</th>
+                                                <th>Current Product</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${lineMachines.map(m => {
+                                                const product = products.find(p => p.id === m.current_product_id);
+                                                return `
+                                                    <tr>
+                                                        <td>#${m.position}</td>
+                                                        <td>${m.name}</td>
+                                                        <td><span class="${m.is_active ? 'status-active' : 'status-inactive'}">${m.is_active ? '✓ Active' : '✗ Inactive'}</span></td>
+                                                        <td><span class="capacity-badge">${m.worker_capacity} worker${m.worker_capacity > 1 ? 's' : ''}</span></td>
+                                                        <td>${product ? product.name : 'None'}</td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                ` : `
+                                    <p class="empty-message">No machines in this line</p>
+                                `}
+                            </div>
+                        `;
+                    }).join('')}
+
+                    <div class="timestamp">
+                        Generated on ${new Date().toLocaleString()}
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        // Create blob and download
+        const blob = new Blob([htmlContent], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `all-lines-layout-${new Date().toISOString().split('T')[0]}.html`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast('All lines exported!', 'success');
+    }
+
+    async function exportAllLinesCSV() {
+        if (lines.length === 0) {
+            showToast('No lines to export', 'error');
+            return;
+        }
+
+        // Fetch all machines for all lines
+        const allMachinesData = {};
+        for (const line of lines) {
+            try {
+                const res = await fetch(`/api/machines?line_id=${line.id}`);
+                const data = await res.json();
+                if (data.success) {
+                    allMachinesData[line.id] = data.data;
+                }
+            } catch (err) {
+                console.error(`Failed to load machines for line ${line.id}`, err);
+                allMachinesData[line.id] = [];
+            }
+        }
+
+        // Create CSV content
+        let csvContent = `All Production Lines - Machine Layout Report\n`;
+        csvContent += `Exported: ${new Date().toLocaleString()}\n\n`;
+
+        lines.forEach(line => {
+            const lineMachines = allMachinesData[line.id] || [];
+            csvContent += `\n"${line.name}"\n`;
+            csvContent += `"Description","${line.description || 'N/A'}"\n`;
+            csvContent += `"Status","${line.is_active ? 'Active' : 'Inactive'}"\n`;
+            csvContent += `"Total Machines","${lineMachines.length}"\n`;
+            csvContent += `"Active Machines","${lineMachines.filter(m => m.is_active).length}"\n\n`;
+
+            csvContent += `"Position","Machine Name","Status","Worker Capacity","Current Product"\n`;
+            lineMachines.forEach(m => {
+                const product = products.find(p => p.id === m.current_product_id);
+                csvContent += `"#${m.position}","${m.name}","${m.is_active ? 'Active' : 'Inactive'}","${m.worker_capacity}","${product ? product.name : 'None'}"\n`;
+            });
+        });
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `all-lines-layout-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        showToast('All lines exported as CSV!', 'success');
+    }
+
     if (loading) {
         return <div className="loading-overlay"><div className="loader"></div><p>Loading...</p></div>;
     }
@@ -193,15 +717,21 @@ export default function LinesPage() {
                         <h2>🏭 Lines & Machines</h2>
                         <p>Manage production lines and their machines</p>
                     </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                         <button className="btn btn-ghost" onClick={() => { setEditLine(null); setLineForm({ name: '', description: '' }); setShowLineModal(true); }}>
                             + Add Line
                         </button>
                         {selectedLine && (
-                            <button className="btn btn-primary" onClick={() => { setMachineForm({ name: '' }); setShowMachineModal(true); }}>
+                            <button className="btn btn-primary" onClick={() => { setMachineForm({ name: '', worker_capacity: 1 }); setShowMachineModal(true); }}>
                                 + Add Machine
                             </button>
                         )}
+                        <button className="btn btn-ghost" onClick={exportAllLinesLayout} title="Export all lines as HTML">
+                            📄 Export All (HTML)
+                        </button>
+                        <button className="btn btn-ghost" onClick={exportAllLinesCSV} title="Export all lines as CSV">
+                            📊 Export All (CSV)
+                        </button>
                     </div>
                 </div>
             </div>
@@ -212,38 +742,55 @@ export default function LinesPage() {
                     <h3 style={{ padding: '12px 12px 16px', fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Production Lines
                     </h3>
-                    {lines.map(line => (
-                        <div
-                            key={line.id}
-                            onClick={() => selectLine(line.id)}
-                            style={{
-                                padding: '14px 16px',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                background: selectedLine === line.id ? 'rgba(99,102,241,0.15)' : 'transparent',
-                                borderLeft: selectedLine === line.id ? '3px solid var(--accent)' : '3px solid transparent',
-                                marginBottom: '4px',
-                                transition: 'var(--transition)',
-                                opacity: line.is_active ? 1 : 0.5,
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
-                                    {line.is_active ? '' : '🔴 '}{line.name}
-                                </div>
-                                <button
-                                    className="btn btn-ghost btn-sm"
-                                    style={{ fontSize: '10px', padding: '2px 6px', color: line.is_active ? 'var(--warning)' : 'var(--success)' }}
-                                    onClick={(e) => { e.stopPropagation(); toggleLineActive(line); }}
-                                >
-                                    {line.is_active ? 'Deactivate' : 'Activate'}
-                                </button>
-                            </div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                {line.machine_count} machines {!line.is_active && '— skipped in assignment'}
-                            </div>
+                    <div style={{ padding: '0 12px 12px' }}>
+                        <div className="search-box" style={{ width: '100%', marginBottom: '8px' }}>
+                            <span className="search-icon">🔍</span>
+                            <input
+                                type="text"
+                                className="form-input input-sm"
+                                style={{ height: '32px', fontSize: '12px' }}
+                                placeholder="Search lines..."
+                                value={lineSearch}
+                                onChange={(e) => setLineSearch(e.target.value)}
+                            />
                         </div>
-                    ))}
+                    </div>
+                    <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', padding: '0 4px' }}>
+                        {lines
+                            .filter(l => l.name.toLowerCase().includes(lineSearch.toLowerCase()))
+                            .map(line => (
+                            <div
+                                key={line.id}
+                                onClick={() => selectLine(line.id)}
+                                style={{
+                                    padding: '14px 16px',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    background: selectedLine === line.id ? 'rgba(99,102,241,0.15)' : 'transparent',
+                                    borderLeft: selectedLine === line.id ? '3px solid var(--accent)' : '3px solid transparent',
+                                    marginBottom: '4px',
+                                    transition: 'var(--transition)',
+                                    opacity: line.is_active ? 1 : 0.5,
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '14px' }}>
+                                        {line.is_active ? '' : '🔴 '}{line.name}
+                                    </div>
+                                    <button
+                                        className="btn btn-ghost btn-sm"
+                                        style={{ fontSize: '10px', padding: '2px 6px', color: line.is_active ? 'var(--warning)' : 'var(--success)' }}
+                                        onClick={(e) => { e.stopPropagation(); toggleLineActive(line); }}
+                                    >
+                                        {line.is_active ? 'Deactivate' : 'Activate'}
+                                    </button>
+                                </div>
+                                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                    {line.machine_count} machines {!line.is_active && '— skipped in assignment'}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                     {lines.length === 0 && (
                         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
                             No lines yet
@@ -266,6 +813,15 @@ export default function LinesPage() {
                                         setLineForm({ name: line.name, description: line.description || '' });
                                         setShowLineModal(true);
                                     }}>✏️ Edit Line</button>
+                                    <button className="btn btn-ghost btn-sm" onClick={exportMachineLayout}>
+                                        📄 Export Layout
+                                    </button>
+                                    <button className="btn btn-ghost btn-sm" onClick={exportToCSV}>
+                                        📊 Export CSV
+                                    </button>
+                                    <button className="btn btn-info btn-sm" onClick={() => setShowBulkAssignModal(true)}>
+                                        🎯 Bulk Assign Product
+                                    </button>
                                     <button className="btn btn-ghost btn-sm" onClick={() => deleteLine(selectedLine)} style={{ color: 'var(--danger)' }}>
                                         🗑️ Delete Line
                                     </button>
@@ -317,6 +873,17 @@ export default function LinesPage() {
                                             onClick={() => toggleMachineActive(m)}
                                         >
                                             {m.is_active ? '⏸ Deactivate' : '▶ Activate'}
+                                        </button>
+                                        <button
+                                            className="btn btn-ghost btn-sm"
+                                            style={{ width: '100%', justifyContent: 'center', fontSize: '11px' }}
+                                            onClick={() => {
+                                                setEditMachine(m);
+                                                setEditMachineForm({ name: m.name });
+                                                setShowEditMachineModal(true);
+                                            }}
+                                        >
+                                            ✏️ Edit Name
                                         </button>
                                         <button
                                             className="btn btn-ghost btn-sm"
@@ -429,6 +996,76 @@ export default function LinesPage() {
                             <div className="modal-footer">
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowMachineModal(false)}>Cancel</button>
                                 <button type="submit" className="btn btn-primary">Add Machine</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Edit Machine modal */}
+            {showEditMachineModal && (
+                <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowEditMachineModal(false)}>
+                    <div className="modal">
+                        <div className="modal-header">
+                            <h3>Edit Machine Name</h3>
+                            <button className="modal-close" onClick={() => setShowEditMachineModal(false)}>×</button>
+                        </div>
+                        <form onSubmit={handleEditMachineSubmit}>
+                            <div className="form-group">
+                                <label className="form-label">Machine Name *</label>
+                                <input
+                                    id="edit-machine-name"
+                                    name="edit_machine_name"
+                                    className="form-input"
+                                    required
+                                    value={editMachineForm.name}
+                                    onChange={e => setEditMachineForm({ ...editMachineForm, name: e.target.value })}
+                                    placeholder="e.g. D-M1"
+                                />
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowEditMachineModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Update Machine</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Assign Product Modal */}
+            {showBulkAssignModal && (
+                <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setShowBulkAssignModal(false)}>
+                    <div className="modal" style={{ maxWidth: '500px' }}>
+                        <div className="modal-header">
+                            <h3>🎯 Bulk Assign Product to Line</h3>
+                            <button className="modal-close" onClick={() => setShowBulkAssignModal(false)}>×</button>
+                        </div>
+                        <form onSubmit={handleBulkAssignProduct}>
+                            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', marginBottom: '15px' }}>
+                                <p style={{ marginBottom: '8px' }}>Assigning to: <strong style={{ color: 'var(--text-primary)' }}>{lines.find(l => l.id === selectedLine)?.name}</strong></p>
+                                <p style={{ fontSize: '13px' }}>This will assign the selected product to all machines in this line</p>
+                            </div>
+                            <div className="form-group" style={{ padding: '0 20px' }}>
+                                <label className="form-label">Select Product *</label>
+                                <select
+                                    className="form-input"
+                                    required
+                                    value={bulkAssignForm.product_id}
+                                    onChange={e => setBulkAssignForm({ product_id: e.target.value })}
+                                >
+                                    <option value="">-- Choose a product --</option>
+                                    {products.map(p => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} {p.sap_code ? `(${p.sap_code})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="modal-footer">
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowBulkAssignModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" disabled={bulkAssigning}>
+                                    {bulkAssigning ? '⏳ Assigning...' : '✓ Assign to All Machines'}
+                                </button>
                             </div>
                         </form>
                     </div>

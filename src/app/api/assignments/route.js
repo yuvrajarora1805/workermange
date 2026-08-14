@@ -1,20 +1,34 @@
 import pool from '@/lib/db';
 import { NextResponse } from 'next/server';
+import { getServerScope } from '@/lib/auth';
+
+export const dynamic = 'force-dynamic';
 
 // GET - retrieve today's assignments
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
-        const shift = searchParams.get('shift');
+        let shift = searchParams.get('shift');
+
+        if (!shift) {
+            const hour = new Date().getHours();
+            shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+        }
+
+        const cookieHeader = request.headers.get('cookie') || '';
+        const scope = getServerScope(cookieHeader);
+        console.log('--- API ASSIGNMENTS GET ---');
+        console.log('Cookie Header:', cookieHeader);
+        console.log('Resolved Scope:', scope);
 
         // Get assignments with worker and machine details
         let assignmentsQuery = `
-            SELECT da.*, 
+            SELECT da.*, da.target_override,
                    w.name as worker_name, w.employee_id, w.skill_level,
                    m.name as machine_name, m.position as machine_position, m.worker_capacity,
                    l.name as line_name, l.id as line_id,
-                   p.name as product_name,
+                   p.name as product_name, p.hourly_target,
                    es.total_score as efficiency_score,
                    es.production_score, es.rating_score
             FROM daily_assignments da
@@ -24,12 +38,12 @@ export async function GET(request) {
             LEFT JOIN products p ON p.id = da.product_id
             LEFT JOIN efficiency_scores es ON es.worker_id = da.worker_id 
                 AND es.date = (SELECT MAX(date) FROM efficiency_scores WHERE worker_id = da.worker_id)
-            WHERE da.date = ?
+            WHERE da.date = ? AND da.shift = ?
         `;
-        const params = [date];
-        if (shift) {
-            assignmentsQuery += ' AND da.shift = ?';
-            params.push(shift);
+        const params = [date, shift];
+        if (scope.role === 'line_lead' && scope.lineId) {
+            assignmentsQuery += ' AND da.line_id = ?';
+            params.push(scope.lineId);
         }
         assignmentsQuery += ' ORDER BY l.name, m.position ASC';
 
@@ -52,7 +66,10 @@ export async function GET(request) {
                     machine_name: a.machine_name,
                     position: a.machine_position,
                     product_name: a.product_name,
-                    worker_capacity: a.worker_capacity || 1, // Need to add this to query
+                    product_id: a.product_id,
+                    hourly_target: a.hourly_target,
+                    target_override: a.target_override,
+                    worker_capacity: a.worker_capacity || 1, 
                     workers: []
                 };
             }
@@ -62,17 +79,17 @@ export async function GET(request) {
                 worker_id: a.worker_id,
                 worker_name: a.worker_name,
                 employee_id: a.employee_id,
-                efficiency_score: a.efficiency_score
+                efficiency_score: a.efficiency_score,
+                assigned_at: a.assigned_at,
+                hourly_target: a.hourly_target
             });
         }
 
-        // Convert machines object to array and sort by position
         const formattedLines = Object.values(lineMap).map(line => ({
             ...line,
             machines: Object.values(line.machines).sort((a, b) => a.position - b.position)
         }));
 
-        // Get unassigned (bench) workers who are present but not assigned in THIS shift
         let benchQuery = `
             SELECT w.*, es.total_score as efficiency_score
             FROM workers w
@@ -88,8 +105,7 @@ export async function GET(request) {
 
         const [bench] = await pool.query(benchQuery, benchParams);
 
-        // Get truly unassigned machines (0 workers)
-        const [unassignedMachines] = await pool.query(`
+        let unassignedMachinesQuery = `
             SELECT m.*, l.name as line_name, p.name as product_name, 0 as current_occupancy
             FROM machines m
             JOIN \`lines\` l ON l.id = m.line_id
@@ -98,15 +114,22 @@ export async function GET(request) {
             AND m.id NOT IN (
                 SELECT machine_id FROM daily_assignments WHERE date = ? AND shift = ?
             )
-            ORDER BY l.name, m.position
-        `, [date, shift || 'day']);
+        `;
+        const machineParams = [date, shift || 'day'];
+        if (scope.role === 'line_lead' && scope.lineId) {
+            unassignedMachinesQuery += ' AND m.line_id = ?';
+            machineParams.push(scope.lineId);
+        }
+        unassignedMachinesQuery += ' ORDER BY l.name, m.position';
+
+        const [unassignedMachines] = await pool.query(unassignedMachinesQuery, machineParams);
 
         return NextResponse.json({
             success: true,
             data: {
                 assignments: formattedLines,
                 bench: bench,
-                unassigned_machines: unassignedMachines.map(m => ({ ...m, machine_name: m.name })), // Normalize name
+                unassigned_machines: unassignedMachines.map(m => ({ ...m, machine_name: m.name })),
                 summary: {
                     total_assigned: assignments.length,
                     total_bench: bench.length,
@@ -124,55 +147,76 @@ export async function POST(request) {
     try {
         const body = await request.json();
         const date = body.date || new Date().toISOString().split('T')[0];
+        const useBestEfficiency = body.useBestEfficiency || false;
 
-        // Auto-detect which shift this run is for based on current time
-        const hour = new Date().getHours();
-        const shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+        // Use shift from request if provided, otherwise auto-detect
+        let shift = body.shift;
+        if (!shift) {
+            const hour = new Date().getHours();
+            shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+        }
 
-        // Step 1: Clear existing AUTO assignments for this date+shift only
-        await pool.query('DELETE FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 0', [date, shift]);
+        const cookieHeader = request.headers.get('cookie') || '';
+        const scope = getServerScope(cookieHeader);
 
-        // Step 2: Get all present workers (excluding those already manually assigned today)
+        // Check if explicit full reset requested (default false: preserve existing 7:00 AM allocated workers)
+        const resetAll = body.resetAll || false;
+
+        // Step 1: Clear existing AUTO assignments ONLY IF explicit full reset requested
+        if (resetAll) {
+            if (scope.role === 'line_lead' && scope.lineId) {
+                await pool.query('DELETE FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 0 AND line_id = ?', [date, shift, scope.lineId]);
+            } else {
+                await pool.query('DELETE FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 0', [date, shift]);
+            }
+        }
+
+        // Step 2: Get all present/late workers who are NOT ALREADY ASSIGNED to a machine
         const [presentWorkers] = await pool.query(`
             SELECT w.id, w.name, w.employee_id, w.skill_level
             FROM workers w
             JOIN attendance a ON a.worker_id = w.id AND a.date = ? AND a.shift = ? AND a.status IN ('present', 'late')
             WHERE w.is_active = 1
-            AND w.id NOT IN (SELECT worker_id FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 1)
+            AND w.id NOT IN (SELECT worker_id FROM daily_assignments WHERE date = ? AND shift = ?)
         `, [date, shift, date, shift]);
 
         if (presentWorkers.length === 0) {
             return NextResponse.json({
                 success: true,
                 data: {
-                    message: 'No workers present for assignment',
+                    message: `All present workers for ${shift} shift on ${date} are already allocated to machines.`,
                     assigned: 0,
                     bench: 0
                 }
             });
         }
 
-        // Step 3: Get all active machines and their assigned products (excluding those fully manually assigned today)
-        const [machines] = await pool.query(`
+        // Step 3: Get all active machines that still have open capacity for additional workers
+        let machinesQuery = `
             SELECT m.id, m.name, m.line_id, m.position, m.current_product_id, m.worker_capacity,
                    l.name as line_name, p.name as product_name,
-                   (SELECT COUNT(*) FROM daily_assignments da WHERE da.machine_id = m.id AND da.date = ? AND da.shift = ? AND da.is_manual = 1) as manual_count
+                   (SELECT COUNT(*) FROM daily_assignments da WHERE da.machine_id = m.id AND da.date = ? AND da.shift = ?) as assigned_count
             FROM machines m
             JOIN \`lines\` l ON l.id = m.line_id
             LEFT JOIN products p ON p.id = m.current_product_id
             WHERE m.is_active = 1 AND l.is_active = 1
             AND m.id IN (
                 SELECT id FROM machines WHERE worker_capacity > (
-                    SELECT COUNT(*) FROM daily_assignments da WHERE da.machine_id = machines.id AND da.date = ? AND da.shift = ? AND da.is_manual = 1
+                    SELECT COUNT(*) FROM daily_assignments da WHERE da.machine_id = machines.id AND da.date = ? AND da.shift = ?
                 )
             )
-            ORDER BY l.id ASC, m.position ASC
-        `, [date, shift, date, shift]);
+        `;
+        const machineQueryParams = [date, shift, date, shift];
+        if (scope.role === 'line_lead' && scope.lineId) {
+            machinesQuery += ' AND m.line_id = ?';
+            machineQueryParams.push(scope.lineId);
+        }
+        machinesQuery += ' ORDER BY l.id ASC, m.position ASC';
 
-        // Step 4: Calculate Global and Machine-Specific Efficiency for each worker
+        const [machines] = await pool.query(machinesQuery, machineQueryParams);
+
         const workerGlobalScores = {};
         for (const worker of presentWorkers) {
-            // Global production score (avg of all machines)
             const [globalProd] = await pool.query(`
                 SELECT MAX(
                     CASE 
@@ -187,7 +231,6 @@ export async function POST(request) {
 
             const productionScore = globalProd[0].max_score ? parseFloat(globalProd[0].max_score) : 0;
 
-            // Rating score (20%)
             const [ratings] = await pool.query(`
                 SELECT AVG(rating) as avg_rating
                 FROM manager_ratings
@@ -204,7 +247,6 @@ export async function POST(request) {
                 total: productionScore + ratingScore
             };
 
-            // Updated efficiency_scores table for reference
             await pool.query(`
                 INSERT INTO efficiency_scores (worker_id, date, production_score, rating_score, total_score)
                 VALUES (?, ?, ?, ?, ?)
@@ -215,15 +257,13 @@ export async function POST(request) {
             `, [worker.id, date, productionScore.toFixed(2), ratingScore.toFixed(2), (productionScore + ratingScore).toFixed(2)]);
         }
 
-        // Step 5: Build all possible (Worker, Machine) matching candidates
         const candidates = [];
         for (const worker of presentWorkers) {
-            // Get MOST RECENT machine & product specific historical efficiency for this worker
             const [machineHistory] = await pool.query(`
-                SELECT machine_id, product_id, 
+                SELECT machine_id, product_id,
                        MAX(LEAST((actual_units / target_units) * 80, 80)) as max_machine_score
                 FROM production_logs
-                WHERE worker_id = ? AND target_units > 0 
+                WHERE worker_id = ? AND target_units > 0
                   AND date >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
                 GROUP BY machine_id, product_id
             `, [worker.id]);
@@ -234,55 +274,39 @@ export async function POST(request) {
                 historyMap[key] = parseFloat(h.max_machine_score);
             });
 
-            // Get MANUAL efficiency overrides for this worker
-            const [manualEff] = await pool.query(`
-                SELECT machine_id, product_id, (efficiency_pct / 100) * 80 as manual_score
-                FROM manual_efficiency
-                WHERE worker_id = ?
-            `, [worker.id]);
-
-            const manualMap = {};
-            manualEff.forEach(m => {
-                const key = `${m.machine_id}-${m.product_id || 'null'}`;
-                manualMap[key] = parseFloat(m.manual_score);
-            });
-
-            const globalScore = workerGlobalScores[worker.id];
+            const ratingPart = workerGlobalScores[worker.id]?.rating || 0;
 
             for (const machine of machines) {
-                const ratingPart = workerGlobalScores[worker.id]?.rating || 0;
                 let productionPart = 0;
-                
-                // exact match only: machine + product
                 const exactKey = `${machine.id}-${machine.current_product_id || 'null'}`;
-                const manualScore = manualMap[exactKey];
-                const historyScore = historyMap[exactKey];
-
-                if (manualScore !== undefined || historyScore !== undefined) {
-                    // Use the BEST score available between Manual and Max History
-                    productionPart = Math.max(manualScore || 0, historyScore || 0);
+                
+                if (useBestEfficiency) {
+                    let bestHistoryScore = 0;
+                    for (const key in historyMap) {
+                        if (key.startsWith(`${machine.id}-`)) {
+                            bestHistoryScore = Math.max(bestHistoryScore, historyMap[key]);
+                        }
+                    }
+                    productionPart = bestHistoryScore;
+                } else {
+                    productionPart = historyMap[exactKey] || 0;
                 }
 
-                // Total matching score = Production (80%) + Rating (20%)
-                const totalMatchScore = productionPart + ratingPart;
-
-                candidates.push({
-                    worker,
-                    machine,
-                    matchScore: totalMatchScore
-                });
+                if (productionPart > 0) {
+                    candidates.push({
+                        worker,
+                        machine,
+                        matchScore: productionPart + ratingPart
+                    });
+                }
             }
         }
 
-        // Step 6: Greedy Matching algorithm
-        // Sort candidates by match score descending
         candidates.sort((a, b) => b.matchScore - a.matchScore);
 
         const assignedWorkerIds = new Set();
-        const machineOccupancy = {}; // Track how many workers are assigned to each machine
-        machines.forEach(m => {
-            machineOccupancy[m.id] = m.manual_count || 0;
-        });
+        const machineOccupancy = {}; 
+        machines.forEach(m => machineOccupancy[m.id] = m.assigned_count || 0);
         const assignments = [];
 
         for (const candidate of candidates) {
@@ -293,11 +317,32 @@ export async function POST(request) {
                 continue;
             }
 
-            // Perform assignment
             await pool.query(
                 'INSERT INTO daily_assignments (worker_id, machine_id, line_id, product_id, date, shift) VALUES (?, ?, ?, ?, ?, ?)',
                 [candidate.worker.id, candidate.machine.id, candidate.machine.line_id, candidate.machine.current_product_id, date, shift]
             );
+
+            // Open new shift log for auto-assignment ONLY IF assigning for today
+            const todayStr = new Date().toISOString().split('T')[0];
+            if (date === todayStr) {
+                // Close any existing active shift log for this worker first
+                const [activeShift] = await pool.query(
+                    'SELECT id, start_time FROM worker_shift_logs WHERE worker_id = ? AND end_time IS NULL LIMIT 1',
+                    [candidate.worker.id]
+                );
+                if (activeShift.length > 0) {
+                    const hrs = Math.max(0.1, (new Date() - new Date(activeShift[0].start_time)) / 3600000);
+                    await pool.query(
+                        'UPDATE worker_shift_logs SET end_time = NOW(), total_hours = ? WHERE id = ?',
+                        [hrs.toFixed(2), activeShift[0].id]
+                    );
+                }
+
+                await pool.query(
+                    'INSERT INTO worker_shift_logs (worker_id, machine_id, product_id, start_time) VALUES (?, ?, ?, NOW())',
+                    [candidate.worker.id, candidate.machine.id, candidate.machine.current_product_id]
+                );
+            }
 
             assignedWorkerIds.add(candidate.worker.id);
             machineOccupancy[candidate.machine.id] = (machineOccupancy[candidate.machine.id] || 0) + 1;
@@ -305,30 +350,19 @@ export async function POST(request) {
             assignments.push({
                 worker_name: candidate.worker.name,
                 employee_id: candidate.worker.employee_id,
-                efficiency: candidate.matchScore.toFixed(2),
-                machine_name: candidate.machine.name,
-                line_name: candidate.machine.line_name,
-                product_name: candidate.machine.product_name || 'N/A'
+                machine_name: candidate.machine.name
             });
         }
 
-        // Step 7: Handle bench workers (not assigned to any machine)
-        const benchWorkers = presentWorkers
-            .filter(w => !assignedWorkerIds.has(w.id))
-            .map(w => ({
-                worker_name: w.name,
-                employee_id: w.employee_id,
-                efficiency: workerGlobalScores[w.id].toFixed(2)
-            }));
+        const benchWorkers = presentWorkers.filter(w => !assignedWorkerIds.has(w.id));
 
         return NextResponse.json({
             success: true,
             data: {
-                message: `Successfully assigned ${assignments.length} workers to machines based on efficiency history.`,
+                message: `Successfully assigned ${assignments.length} workers for ${shift} shift on ${date}.`,
                 assigned: assignments.length,
                 bench: benchWorkers.length,
-                assignments: assignments,
-                bench_workers: benchWorkers
+                assignments: assignments
             }
         });
     } catch (error) {
