@@ -705,7 +705,7 @@ export default function AssignmentsPage() {
                         <div className="machines-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                             {line.machines.map(m => (
                                 <div key={m.id} className="machine-card" 
-                                    onClick={() => {
+                                    onDoubleClick={() => {
                                         if (isDragMode && selectedWorkerForMove) {
                                             handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
                                             setSelectedWorkerForMove(null);
@@ -729,9 +729,11 @@ export default function AssignmentsPage() {
                                                     key={w.assignment_id}
                                                     draggable={isDragMode}
                                                     onDragStart={(e) => handleDragStart(e, w, m)}
-                                                    onClick={(e) => {
+                                                    onDoubleClick={(e) => {
                                                         if (isDragMode) { handleWorkerCardClick(w, m.machine_name, e); }
-                                                        else if (selectable) { handleWorkerCardClick(w, m.machine_name); }
+                                                    }}
+                                                    onClick={(e) => {
+                                                        if (!isDragMode && selectable) { handleWorkerCardClick(w, m.machine_name); }
                                                     }}
                                                     className={isTapSelected ? 'tap-selected' : ''}
                                                     style={{
@@ -788,12 +790,15 @@ export default function AssignmentsPage() {
                                                 key={`empty-${m.id}-${idx}`}
                                                 className="btn btn-ghost"
                                                 style={{ border: '1px dashed var(--border-color)', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '600', width: '100%', minHeight: '60px' }}
-                                                onClick={(e) => { 
+                                                onDoubleClick={(e) => { 
                                                     if (isDragMode && selectedWorkerForMove) {
                                                         e.stopPropagation();
                                                         handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
                                                         setSelectedWorkerForMove(null);
-                                                    } else if (!isDragMode) {
+                                                    }
+                                                }}
+                                                onClick={(e) => { 
+                                                    if (!isDragMode) {
                                                         setManualMachine(m); setShowManualModal(true); setManualWorkerId(''); setManualSearch(''); setIsDropdownOpen(false); 
                                                     }
                                                 }}
