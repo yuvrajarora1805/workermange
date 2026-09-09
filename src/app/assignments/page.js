@@ -24,6 +24,14 @@ export default function AssignmentsPage() {
     const [swapTarget, setSwapTarget] = useState(null); // Step 2: selected target worker
     const [swapForm, setSwapForm] = useState({ sourceTarget: '', sourceActuals: '', sourceDefective: '', targetTarget: '', targetActuals: '', targetDefective: '' });
 
+    const [isDragMode, setIsDragMode] = useState(false);
+    const [localData, setLocalData] = useState(null);
+    const [pendingMoves, setPendingMoves] = useState([]);
+    const [selectedWorkerForMove, setSelectedWorkerForMove] = useState(null); // { worker_id, worker_name, old_machine_id, new_machine_id, new_machine_name }
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [batchForm, setBatchForm] = useState({}); // worker_id -> { actuals, defective, target }
+
+
     // Live timer update
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 60000);
@@ -36,6 +44,15 @@ export default function AssignmentsPage() {
     }, []);
 
     useEffect(() => { loadAssignments(); }, [date, shift]);
+
+    useEffect(() => {
+        if (!isDragMode) {
+            setLocalData(JSON.parse(JSON.stringify(data)));
+            setPendingMoves([]);
+            setSelectedWorkerForMove(null);
+        }
+    }, [data, isDragMode]);
+
 
     async function loadAssignments() {
         setLoading(true);
@@ -103,6 +120,147 @@ export default function AssignmentsPage() {
         return 'efficiency-poor';
     }
 
+    
+    function handleDragStart(e, worker, sourceMachine) {
+        if (!isDragMode) return;
+        e.dataTransfer.setData('application/json', JSON.stringify({ worker, sourceMachineId: sourceMachine.id }));
+    }
+
+    function handleDropOnMachine(e, targetMachine) {
+        if (!isDragMode) return;
+        e.preventDefault();
+        try {
+            const { worker, sourceMachineId } = JSON.parse(e.dataTransfer.getData('application/json'));
+            if (sourceMachineId === targetMachine.id) return; // Same machine
+            
+            // Clone local data
+            const newData = { ...localData };
+            
+            // Find source and target in newData
+            let sourceList, targetList;
+            
+            // Function to find the worker's array
+            const findListAndRemove = (wid) => {
+                let removedWorker = null;
+                newData.assignments.forEach(line => {
+                    line.machines.forEach(m => {
+                        const idx = m.workers.findIndex(w => w.worker_id === wid);
+                        if (idx !== -1) {
+                            removedWorker = m.workers.splice(idx, 1)[0];
+                        }
+                    });
+                });
+                return removedWorker;
+            };
+
+            const wToMove = findListAndRemove(worker.worker_id);
+            if (!wToMove) return;
+
+            // Target machine
+            let tMachine = null;
+            newData.assignments.forEach(line => {
+                line.machines.forEach(m => {
+                    if (m.id === targetMachine.id) tMachine = m;
+                });
+            });
+            if (!tMachine) {
+                newData.unassigned_machines.forEach(m => {
+                    if (m.id === targetMachine.id) tMachine = m;
+                });
+            }
+
+            if (tMachine) {
+                if (!tMachine.workers) tMachine.workers = [];
+                // If over capacity, displace the first worker
+                if (tMachine.workers.length >= (tMachine.worker_capacity || 1)) {
+                    const displaced = tMachine.workers.shift();
+                    // Put displaced worker to bench or source machine?
+                    // Let's put them in source machine if possible
+                    let sMachine = null;
+                    newData.assignments.forEach(line => {
+                        line.machines.forEach(m => { if (m.id === sourceMachineId) sMachine = m; });
+                    });
+                    if (sMachine) {
+                        sMachine.workers.push(displaced);
+                        // Track displaced move
+                        updatePendingMove(displaced, targetMachine.id, sMachine.id, sMachine.machine_name || sMachine.name);
+                    }
+                }
+                tMachine.workers.push(wToMove);
+                updatePendingMove(wToMove, sourceMachineId, tMachine.id, tMachine.machine_name || tMachine.name);
+            }
+            
+            setLocalData(newData);
+        } catch (err) { console.error(err); }
+    }
+    
+    function updatePendingMove(worker, oldMid, newMid, newMName) {
+        setPendingMoves(prev => {
+            const existing = prev.find(p => p.worker_id === worker.worker_id);
+            if (existing) {
+                if (existing.original_machine_id === newMid) {
+                    // Moved back to original, remove from pending
+                    return prev.filter(p => p.worker_id !== worker.worker_id);
+                } else {
+                    return prev.map(p => p.worker_id === worker.worker_id ? { ...p, new_machine_id: newMid, new_machine_name: newMName } : p);
+                }
+            } else {
+                return [...prev, { 
+                    worker_id: worker.worker_id, 
+                    worker_name: worker.worker_name, 
+                    original_machine_id: oldMid, 
+                    new_machine_id: newMid,
+                    new_machine_name: newMName
+                }];
+            }
+        });
+    }
+
+    function openBatchModal() {
+        // init form
+        const form = {};
+        pendingMoves.forEach(p => {
+            form[p.worker_id] = { actuals: '', defective: '', target: '' };
+        });
+        setBatchForm(form);
+        setShowBatchModal(true);
+    }
+
+    async function handleBatchSubmit(e) {
+        e.preventDefault();
+        setAssigning(true);
+        try {
+            const assignments = pendingMoves.map(p => ({
+                worker_id: p.worker_id,
+                machine_id: p.new_machine_id,
+                actuals: parseInt(batchForm[p.worker_id]?.actuals) || 0,
+                defective: parseInt(batchForm[p.worker_id]?.defective) || 0,
+                target: batchForm[p.worker_id]?.target ? parseInt(batchForm[p.worker_id].target) : null
+            }));
+
+            const res = await fetch('/api/assignments/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date, shift, assignments })
+            });
+            const result = await res.json();
+            if (result.success) {
+                showToast('Batch rearrangement saved!', 'success');
+                setShowBatchModal(false);
+                setIsDragMode(false);
+                setPendingMoves([]);
+                loadAssignments();
+            } else {
+                showToast(result.error || 'Failed to save', 'error');
+            }
+        } catch (err) {
+            showToast('Error saving batch', 'error');
+        } finally {
+            setAssigning(false);
+        }
+    }
+
+
     function showToast(msg, type) {
         const container = document.getElementById('toast-container') || document.body;
         const toast = document.createElement('div');
@@ -121,7 +279,26 @@ export default function AssignmentsPage() {
         setSwapForm({ sourceTarget: '', sourceActuals: '', sourceDefective: '', targetTarget: '', targetActuals: '', targetDefective: '' });
     }
 
-    function handleWorkerCardClick(worker, machineName) {
+    
+    function handleWorkerCardClick(worker, machineName, e) {
+        if (isDragMode) {
+            e?.stopPropagation();
+            if (selectedWorkerForMove && selectedWorkerForMove.worker.worker_id === worker.worker_id) {
+                setSelectedWorkerForMove(null);
+            } else {
+                let sourceMachineId = null;
+                localData.assignments.forEach(line => {
+                    line.machines.forEach(m => {
+                        if (m.workers.some(w => w.worker_id === worker.worker_id)) {
+                            sourceMachineId = m.id;
+                        }
+                    });
+                });
+                setSelectedWorkerForMove({ worker, sourceMachineId });
+            }
+            return;
+        }
+        
         if (!swapSource) return; // Not in swap mode
         if (worker.worker_id === swapSource.worker_id) return; // Can't swap with self
         
@@ -196,7 +373,8 @@ export default function AssignmentsPage() {
 
     // Combine assigned and unassigned machines to get ALL machines grouped by line for printing
     const lineMap = {};
-    (data.assignments || []).forEach(line => {
+    const displayData = isDragMode && localData ? localData : data;
+    (displayData.assignments || []).forEach(line => {
         lineMap[line.line_id] = {
             line_id: line.line_id,
             line_name: line.line_name,
@@ -210,7 +388,7 @@ export default function AssignmentsPage() {
         });
     });
 
-    (data.unassigned_machines || []).forEach(m => {
+    (displayData.unassigned_machines || []).forEach(m => {
         const lineId = m.line_id;
         if (!lineMap[lineId]) {
             lineMap[lineId] = {
@@ -247,12 +425,22 @@ export default function AssignmentsPage() {
                         <h2 style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>🔧 Machine Assignments</h2>
                         <p style={{ color: 'var(--text-muted)' }}>Worker-to-machine allocation for production</p>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                         <div style={{ background: 'var(--card-bg)', padding: '4px', borderRadius: '8px', display: 'flex', gap: '4px', border: '1px solid var(--border-color)', height: '42px', alignItems: 'center' }}>
                             <button className={`btn btn-sm ${shift === 'day' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShift('day')} style={{ height: '32px', padding: '0 16px' }}>☀️ Day</button>
                             <button className={`btn btn-sm ${shift === 'night' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setShift('night')} style={{ height: '32px', padding: '0 16px' }}>🌙 Night</button>
                         </div>
                         <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} style={{ height: '42px', width: '160px', borderRadius: '8px' }} />
+                        
+                        <button className={`btn ${isDragMode ? 'btn-warning' : 'btn-ghost'}`} onClick={() => setIsDragMode(!isDragMode)} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600', border: '1px solid var(--border-color)' }}>
+                            {isDragMode ? '❌ Cancel Drag Mode' : '✋ Rearrange (Drag & Drop)'}
+                        </button>
+                        {isDragMode && pendingMoves.length > 0 && (
+                            <button className="btn btn-success sticky-mobile-save" onClick={openBatchModal} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600' }}>
+                                💾 Save Changes ({pendingMoves.length})
+                            </button>
+                        )}
+
                         <button className="btn btn-ghost" onClick={() => window.print()} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                             🖨️ Print Sheet
                         </button>
@@ -386,6 +574,20 @@ export default function AssignmentsPage() {
                         display: none;
                     }
                 }
+                @media screen and (max-width: 600px) {
+                    .page-header-actions > div:last-child > button {
+                        flex: 1 1 calc(50% - 6px);
+                    }
+                    .page-header-actions > div:last-child > button:last-child {
+                        flex: 1 1 100%;
+                    }
+                    .stats-grid {
+                        grid-template-columns: 1fr 1fr !important;
+                    }
+                    .stats-grid > .stat-card:last-child {
+                        grid-column: 1 / -1;
+                    }
+                }
             `}} />
 
             {/* Print-Only Layout */}
@@ -464,7 +666,7 @@ export default function AssignmentsPage() {
                 </div>
             )}
 
-            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px', marginBottom: '32px' }}>
                 <div className="stat-card" style={{ background: 'var(--card-bg)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                     <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Assigned</div>
                     <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--success)' }}>{data.summary.total_assigned || 0}</div>
@@ -497,35 +699,51 @@ export default function AssignmentsPage() {
                             </div>
                         <div className="machines-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
                             {line.machines.map(m => (
-                                <div key={m.id} className="machine-card" style={{ background: 'var(--card-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
+                                <div key={m.id} className="machine-card" 
+                                    onClick={() => {
+                                        if (isDragMode && selectedWorkerForMove) {
+                                            handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
+                                            setSelectedWorkerForMove(null);
+                                        }
+                                    }}
+                                    onDragOver={(e) => isDragMode && e.preventDefault()}
+                                    onDrop={(e) => handleDropOnMachine(e, m)}
+                                    style={{ border: isDragMode ? '2px dashed rgba(255,255,255,0.2)' : '', background: 'var(--card-bg)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', position: 'relative' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                                        <div style={{ fontWeight: '700', fontSize: '16px' }}>{m.machine_name}</div>
-                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.product_name || 'No Product'}</div>
+                                        <div style={{ fontWeight: '700', fontSize: '18px' }}>{m.machine_name}</div>
+                                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{m.product_name || 'No Product'}</div>
                                     </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                         {m.workers.map(w => {
                                             const sourceHighlight = isSource(w.worker_id);
                                             const selectable = isSelectable(w.worker_id);
+                                            const isTapSelected = isDragMode && selectedWorkerForMove?.worker?.worker_id === w.worker_id;
                                             const { time, estTarget } = getWorkingInfo(w);
                                             return (
                                                 <div
                                                     key={w.assignment_id}
-                                                    onClick={() => selectable && handleWorkerCardClick(w, m.machine_name)}
+                                                    draggable={isDragMode}
+                                                    onDragStart={(e) => handleDragStart(e, w, m)}
+                                                    onClick={(e) => {
+                                                        if (isDragMode) { handleWorkerCardClick(w, m.machine_name, e); }
+                                                        else if (selectable) { handleWorkerCardClick(w, m.machine_name); }
+                                                    }}
+                                                    className={isTapSelected ? 'tap-selected' : ''}
                                                     style={{
                                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                         background: sourceHighlight ? 'rgba(99, 102, 241, 0.2)' : selectable ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
                                                         padding: '10px', borderRadius: '8px',
-                                                        border: sourceHighlight ? '2px solid var(--accent)' : selectable ? '1px dashed rgba(16, 185, 129, 0.4)' : '1px solid transparent',
+                                                        border: isTapSelected ? '2px solid var(--accent)' : sourceHighlight ? '2px solid var(--accent)' : selectable ? '1px dashed rgba(16, 185, 129, 0.4)' : '1px solid transparent',
                                                         cursor: selectable ? 'pointer' : 'default',
                                                         transition: 'all 0.2s ease',
                                                     }}
                                                 >
                                                     <div>
-                                                        <div style={{ fontWeight: '600', fontSize: '14px' }}>
+                                                        <div style={{ fontWeight: '600', fontSize: '16px' }}>
                                                             {sourceHighlight && <span style={{ marginRight: '6px' }}>🔄</span>}
                                                             {w.worker_name}
                                                         </div>
-                                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.3px' }}>{w.employee_id}</div>
+                                                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, letterSpacing: '0.3px' }}>{w.employee_id}</div>
                                                         {(time || estTarget) && (
                                                             <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
                                                                 {time && (
@@ -582,6 +800,37 @@ export default function AssignmentsPage() {
                     <p style={{ color: 'var(--text-muted)' }}>Mark attendance first, then click "Run Auto-Assignment" to allocate workers.</p>
                 </div>
             )}
+
+            
+            {/* Batch Save Modal */}
+            {showBatchModal && (
+                <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="modal" style={{ background: 'var(--card-bg)', width: '600px', maxWidth: '95vw', borderRadius: '16px', padding: '24px', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <h3 style={{ marginBottom: '20px' }}>💾 Confirm Rearrangement</h3>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '20px', fontSize: '13px' }}>
+                            Please enter the production logged so far for the workers being moved.
+                        </p>
+                        <form onSubmit={handleBatchSubmit}>
+                            {pendingMoves.map(p => (
+                                <div key={p.worker_id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
+                                    <div style={{ fontWeight: 600, marginBottom: '4px' }}>{p.worker_name}</div>
+                                    <div style={{ fontSize: '12px', color: 'var(--success)', marginBottom: '12px' }}>Moving to: {p.new_machine_name}</div>
+                                    <div className="batch-inputs" style={{ display: 'flex', gap: '8px' }}>
+                                        <input type="number" placeholder="Target Units" className="form-input" value={batchForm[p.worker_id]?.target || ''} onChange={e => setBatchForm({...batchForm, [p.worker_id]: {...batchForm[p.worker_id], target: e.target.value}})} style={{ width: '33%', height: '36px' }} />
+                                        <input type="number" placeholder="Actual Units" className="form-input" value={batchForm[p.worker_id]?.actuals || ''} onChange={e => setBatchForm({...batchForm, [p.worker_id]: {...batchForm[p.worker_id], actuals: e.target.value}})} style={{ width: '33%', height: '36px' }} />
+                                        <input type="number" placeholder="Defective" className="form-input" value={batchForm[p.worker_id]?.defective || ''} onChange={e => setBatchForm({...batchForm, [p.worker_id]: {...batchForm[p.worker_id], defective: e.target.value}})} style={{ width: '33%', height: '36px' }} />
+                                    </div>
+                                </div>
+                            ))}
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowBatchModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-success" disabled={assigning}>{assigning ? 'Saving...' : 'Confirm & Save'}</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
 
             {/* Worker Bench */}
             {data.bench && data.bench.length > 0 && (
@@ -674,7 +923,7 @@ export default function AssignmentsPage() {
                                             {data.bench
                                                 .filter(w => {
                                                     const q = manualSearch.toLowerCase();
-                                                    return w.name.toLowerCase().includes(q) || w.employee_id.toLowerCase().includes(q);
+                                                    return w.employee_id.toLowerCase().includes(q);
                                                 })
                                                 .map(w => (
                                                     <div
@@ -701,7 +950,7 @@ export default function AssignmentsPage() {
                                                 ))}
                                             {data.bench.filter(w => {
                                                 const q = manualSearch.toLowerCase();
-                                                return w.name.toLowerCase().includes(q) || w.employee_id.toLowerCase().includes(q);
+                                                return w.employee_id.toLowerCase().includes(q);
                                             }).length === 0 && (
                                                 <div style={{ padding: '12px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
                                                     No matching workers found
