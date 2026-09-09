@@ -122,13 +122,13 @@ export default function TopBar({ onMenuClick }) {
                                 border: '1px solid rgba(255,255,255,0.12)',
                                 borderRadius: '6px',
                                 color: 'white',
-                                padding: '6px 12px',
-                                fontSize: '13px',
+                                padding: '8px 12px',
+                                fontSize: '16px',
                                 fontWeight: '600',
                                 outline: 'none',
                                 cursor: 'pointer',
                                 transition: 'var(--transition)',
-                                maxWidth: '140px'
+                                maxWidth: '160px'
                             }}
                         >
                             {scope.role !== 'line_lead' && (

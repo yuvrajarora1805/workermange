@@ -736,7 +736,7 @@ export default function AssignmentsPage() {
                                                     className={isTapSelected ? 'tap-selected' : ''}
                                                     style={{
                                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                        background: sourceHighlight ? 'rgba(99, 102, 241, 0.2)' : selectable ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
+                                                        background: isTapSelected ? 'rgba(99, 102, 241, 0.2)' : sourceHighlight ? 'rgba(99, 102, 241, 0.2)' : selectable ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
                                                         padding: '10px', borderRadius: '8px',
                                                         border: isTapSelected ? '2px solid var(--accent)' : sourceHighlight ? '2px solid var(--accent)' : selectable ? '1px dashed rgba(16, 185, 129, 0.4)' : '1px solid transparent',
                                                         cursor: selectable ? 'pointer' : 'default',
@@ -773,11 +773,11 @@ export default function AssignmentsPage() {
                                                         {!swapSource ? (
                                                             <button
                                                                 className="btn btn-ghost"
-                                                                style={{ padding: '4px 8px', fontSize: '11px', borderRadius: '6px', border: '1px solid var(--border-color)' }}
+                                                                style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--border-color)', fontWeight: '600' }}
                                                                 onClick={(e) => { e.stopPropagation(); handleSwapClick(w, m.machine_name); }}
                                                             >🔄 Swap</button>
                                                         ) : selectable ? (
-                                                            <span style={{ fontSize: '11px', color: 'var(--success)', fontWeight: 600 }}>← Select</span>
+                                                            <span style={{ fontSize: '13px', color: 'var(--success)', fontWeight: 700 }}>← Select</span>
                                                         ) : null}
                                                     </div>
                                                 </div>
@@ -787,7 +787,7 @@ export default function AssignmentsPage() {
                                             <button
                                                 key={`empty-${m.id}-${idx}`}
                                                 className="btn btn-ghost"
-                                                style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '8px', fontSize: '12px' }}
+                                                style={{ border: '1px dashed var(--border-color)', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '600', width: '100%', minHeight: '60px' }}
                                                 onClick={(e) => { 
                                                     if (isDragMode && selectedWorkerForMove) {
                                                         e.stopPropagation();
