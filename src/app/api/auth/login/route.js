@@ -66,7 +66,7 @@ export async function POST(req) {
         const maxAge = 30 * 24 * 60 * 60; // 30 days
         response.cookies.set('workermanage_session', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: req.headers.get('x-forwarded-proto') === 'https',
             sameSite: 'lax',
             path: '/',
             maxAge: maxAge
