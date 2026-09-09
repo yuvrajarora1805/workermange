@@ -276,6 +276,7 @@ export default function AssignmentsPage() {
         // Step 1: select source
         setSwapSource({ ...worker, machineName });
         setSwapTarget(null);
+        setIsDragMode(false);
         setSwapForm({ sourceTarget: '', sourceActuals: '', sourceDefective: '', targetTarget: '', targetActuals: '', targetDefective: '' });
     }
 
@@ -432,7 +433,11 @@ export default function AssignmentsPage() {
                         </div>
                         <input type="date" className="form-input" value={date} onChange={(e) => setDate(e.target.value)} style={{ height: '42px', width: '160px', borderRadius: '8px' }} />
                         
-                        <button className={`btn ${isDragMode ? 'btn-warning' : 'btn-ghost'}`} onClick={() => setIsDragMode(!isDragMode)} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600', border: '1px solid var(--border-color)' }}>
+                        <button className={`btn ${isDragMode ? 'btn-warning' : 'btn-ghost'}`} onClick={() => {
+                            const newMode = !isDragMode;
+                            setIsDragMode(newMode);
+                            if (newMode) cancelSwap();
+                        }} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600', border: '1px solid var(--border-color)' }}>
                             {isDragMode ? '❌ Cancel Drag Mode' : '✋ Rearrange (Drag & Drop)'}
                         </button>
                         {isDragMode && pendingMoves.length > 0 && (

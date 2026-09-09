@@ -111,7 +111,7 @@ export default function TopBar({ onMenuClick }) {
                 {/* Dynamic Line Context Switcher */}
                 {showLineSwitcher && lineOptions.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <span className="hide-on-mobile" style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                             🏭 Line Scope:
                         </span>
                         <select
@@ -127,7 +127,8 @@ export default function TopBar({ onMenuClick }) {
                                 fontWeight: '600',
                                 outline: 'none',
                                 cursor: 'pointer',
-                                transition: 'var(--transition)'
+                                transition: 'var(--transition)',
+                                maxWidth: '140px'
                             }}
                         >
                             {scope.role !== 'line_lead' && (
@@ -143,7 +144,7 @@ export default function TopBar({ onMenuClick }) {
                 )}
 
                 {/* Profile and Logout Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '20px' }}>
+                <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px', borderLeft: '1px solid var(--border-color)', paddingLeft: '20px' }}>
                     <div style={{ textAlign: 'right', display: 'none', md: 'block' }}>
                         <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{scope.fullName || 'User'}</div>
                         <span style={{
