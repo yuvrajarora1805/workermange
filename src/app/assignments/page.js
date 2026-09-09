@@ -783,7 +783,15 @@ export default function AssignmentsPage() {
                                                 key={`empty-${m.id}-${idx}`}
                                                 className="btn btn-ghost"
                                                 style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '8px', fontSize: '12px' }}
-                                                onClick={() => { setManualMachine(m); setShowManualModal(true); setManualWorkerId(''); setManualSearch(''); setIsDropdownOpen(false); }}
+                                                onClick={(e) => { 
+                                                    if (isDragMode && selectedWorkerForMove) {
+                                                        e.stopPropagation();
+                                                        handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
+                                                        setSelectedWorkerForMove(null);
+                                                    } else if (!isDragMode) {
+                                                        setManualMachine(m); setShowManualModal(true); setManualWorkerId(''); setManualSearch(''); setIsDropdownOpen(false); 
+                                                    }
+                                                }}
                                             >+ Assign Worker</button>
                                         ))}
                                     </div>
