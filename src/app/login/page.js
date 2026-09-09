@@ -37,19 +37,15 @@ export default function LoginPage() {
                     fullName
                 );
                 
-                // Redirect user based on role
+                // Redirect user based on role and force a full reload to refresh layouts/state
+                let targetUrl = '/';
                 if (role === 'hr') {
-                    router.push('/attendance');
+                    targetUrl = '/attendance';
                 } else if (role === 'production_team') {
-                    router.push('/lines');
-                } else {
-                    router.push('/');
+                    targetUrl = '/lines';
                 }
                 
-                // Force a reload to refresh layouts/state
-                setTimeout(() => {
-                    window.location.reload();
-                }, 100);
+                window.location.href = targetUrl;
             } else {
                 setError(result.error || 'Invalid credentials');
             }

@@ -1,20 +1,27 @@
 services:
   web:
-    build: .
-    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: always
     ports:
       - "3015:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
     environment:
       - DB_HOST=db
       - DB_USER=root
       - DB_PASSWORD=rootpassword
       - DB_NAME=workermanage
+      - NODE_ENV=development
     depends_on:
       - db
 
   db:
     image: mariadb:latest
-    restart: unless-stopped
+    restart: always
     environment:
       - MYSQL_ROOT_PASSWORD=rootpassword
       - MYSQL_DATABASE=workermanage
@@ -23,7 +30,7 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       # Uncomment to seed database on first run
-      # - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
 
 volumes:
   db_data:

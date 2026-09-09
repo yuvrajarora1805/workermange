@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function AssignmentsPage() {
     const [data, setData] = useState({ assignments: [], bench: [], unassigned_machines: [], summary: {} });
@@ -25,6 +25,7 @@ export default function AssignmentsPage() {
     const [swapForm, setSwapForm] = useState({ sourceTarget: '', sourceActuals: '', sourceDefective: '', targetTarget: '', targetActuals: '', targetDefective: '' });
 
     const [isDragMode, setIsDragMode] = useState(false);
+    const lastTap = useRef({ time: 0, id: null });
     const [localData, setLocalData] = useState(null);
     const [pendingMoves, setPendingMoves] = useState([]);
     const [selectedWorkerForMove, setSelectedWorkerForMove] = useState(null); // { worker_id, worker_name, old_machine_id, new_machine_id, new_machine_name }
@@ -286,6 +287,19 @@ export default function AssignmentsPage() {
             e?.stopPropagation();
             if (selectedWorkerForMove && selectedWorkerForMove.worker.worker_id === worker.worker_id) {
                 setSelectedWorkerForMove(null);
+            } else if (selectedWorkerForMove) {
+                let targetMachine = null;
+                localData.assignments.forEach(line => {
+                    line.machines.forEach(m => {
+                        if (m.workers.some(w => w.worker_id === worker.worker_id)) {
+                            targetMachine = m;
+                        }
+                    });
+                });
+                if (targetMachine) {
+                    handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, targetMachine);
+                    setSelectedWorkerForMove(null);
+                }
             } else {
                 let sourceMachineId = null;
                 localData.assignments.forEach(line => {
@@ -729,11 +743,27 @@ export default function AssignmentsPage() {
                                                     key={w.assignment_id}
                                                     draggable={isDragMode}
                                                     onDragStart={(e) => handleDragStart(e, w, m)}
-                                                    onDoubleClick={(e) => {
-                                                        if (isDragMode) { handleWorkerCardClick(w, m.machine_name, e); }
-                                                    }}
                                                     onClick={(e) => {
-                                                        if (!isDragMode && selectable) { handleWorkerCardClick(w, m.machine_name); }
+                                                        const now = Date.now();
+                                                        const DOUBLE_CLICK_DELAY = 400; // 400ms for mobile tap
+                                                        const isDoubleClick = lastTap.current.id === w.worker_id && (now - lastTap.current.time) < DOUBLE_CLICK_DELAY;
+                                                        
+                                                        if (isDoubleClick) {
+                                                            lastTap.current = { time: 0, id: null };
+                                                            if (isDragMode) { 
+                                                                handleWorkerCardClick(w, m.machine_name, e); 
+                                                            } else {
+                                                                e.stopPropagation();
+                                                                if (!swapSource) {
+                                                                    handleSwapClick(w, m.machine_name);
+                                                                } else if (selectable) {
+                                                                    handleWorkerCardClick(w, m.machine_name, e);
+                                                                }
+                                                            }
+                                                        } else {
+                                                            lastTap.current = { time: now, id: w.worker_id };
+                                                            // We removed the single-click selection for swapping to enforce double-tap
+                                                        }
                                                     }}
                                                     className={isTapSelected ? 'tap-selected' : ''}
                                                     style={{
@@ -790,16 +820,23 @@ export default function AssignmentsPage() {
                                                 key={`empty-${m.id}-${idx}`}
                                                 className="btn btn-ghost"
                                                 style={{ border: '1px dashed var(--border-color)', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '600', width: '100%', minHeight: '60px' }}
-                                                onDoubleClick={(e) => { 
-                                                    if (isDragMode && selectedWorkerForMove) {
-                                                        e.stopPropagation();
-                                                        handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
-                                                        setSelectedWorkerForMove(null);
-                                                    }
-                                                }}
                                                 onClick={(e) => { 
-                                                    if (!isDragMode) {
-                                                        setManualMachine(m); setShowManualModal(true); setManualWorkerId(''); setManualSearch(''); setIsDropdownOpen(false); 
+                                                    const now = Date.now();
+                                                    const DOUBLE_CLICK_DELAY = 400;
+                                                    const isDoubleClick = lastTap.current.id === `empty-${m.id}-${idx}` && (now - lastTap.current.time) < DOUBLE_CLICK_DELAY;
+                                                    
+                                                    if (isDoubleClick) {
+                                                        lastTap.current = { time: 0, id: null };
+                                                        if (isDragMode && selectedWorkerForMove) {
+                                                            e.stopPropagation();
+                                                            handleDropOnMachine({ preventDefault: () => {}, dataTransfer: { getData: () => JSON.stringify(selectedWorkerForMove) } }, m);
+                                                            setSelectedWorkerForMove(null);
+                                                        }
+                                                    } else {
+                                                        lastTap.current = { time: now, id: `empty-${m.id}-${idx}` };
+                                                        if (!isDragMode) {
+                                                            setManualMachine(m); setShowManualModal(true); setManualWorkerId(''); setManualSearch(''); setIsDropdownOpen(false); 
+                                                        }
                                                     }
                                                 }}
                                             >+ Assign Worker</button>
