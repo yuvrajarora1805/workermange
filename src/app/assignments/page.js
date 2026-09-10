@@ -8,19 +8,9 @@ export default function AssignmentsPage() {
     const [data, setData] = useState({ assignments: [], bench: [], unassigned_machines: [], summary: {} });
     const [loading, setLoading] = useState(true);
     const [assigning, setAssigning] = useState(false);
-    const [date, setDate] = useState((() => { 
-        const n = new Date(); 
-        if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
-            n.setDate(n.getDate() - 1);
-        }
-        return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; 
-    })());
-    const [shift, setShift] = useState(() => {
-        const hour = new Date().getHours();
-        const minutes = new Date().getMinutes();
-        const timeVal = hour + (minutes / 60);
-        return (timeVal >= 7.5 && timeVal < 19.5) ? 'day' : 'night';
-    });
+    const [date, setDate] = useState('');
+    const [shift, setShift] = useState('');
+    const [isInitialized, setIsInitialized] = useState(false);
 
     const [showManualModal, setShowManualModal] = useState(false);
     const [manualMachine, setManualMachine] = useState(null);
@@ -54,9 +44,29 @@ export default function AssignmentsPage() {
 
     useEffect(() => {
         setScope(getClientScope());
+        
+        // Calculate correct date and shift based on the user's local timezone browser clock
+        const n = new Date();
+        const hour = n.getHours();
+        const minutes = n.getMinutes();
+        const timeVal = hour + (minutes / 60);
+        
+        if (timeVal < 7.5) {
+            n.setDate(n.getDate() - 1);
+        }
+        const calcDate = `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`;
+        const calcShift = (timeVal >= 7.5 && timeVal < 19.5) ? 'day' : 'night';
+        
+        setDate(calcDate);
+        setShift(calcShift);
+        setIsInitialized(true);
     }, []);
 
-    useEffect(() => { loadAssignments(); }, [date, shift]);
+    useEffect(() => { 
+        if (isInitialized) {
+            loadAssignments(); 
+        }
+    }, [date, shift, isInitialized]);
 
     useEffect(() => {
         if (!isDragMode) {
@@ -68,6 +78,7 @@ export default function AssignmentsPage() {
 
 
     async function loadAssignments() {
+        if (!date || !shift) return;
         setLoading(true);
         try {
             const res = await fetch(`/api/assignments?date=${date}&shift=${shift}`);
