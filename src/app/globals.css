@@ -218,7 +218,7 @@ body {
 .main-content {
     flex: 1;
     margin-left: 260px;  /* Matches desktop sidebar width */
-    padding: 32px 32px 40px; /* top: just breathing room, no topbar on desktop */
+    padding: 92px 32px 40px; /* top: 60px topbar + 32px breathing room */
     min-height: 100vh;
     min-height: 100dvh;
     width: 0; /* Prevents content from pushing past container on flex */
@@ -916,9 +916,9 @@ tbody tr:last-child td {
     50% { opacity: 0.5; }
 }
 
-/* ===== TOPBAR (Mobile Only) ===== */
+/* ===== TOPBAR ===== */
 .topbar {
-    display: none;
+    display: flex;
     position: fixed;
     top: 0;
     left: 0;
@@ -939,6 +939,7 @@ tbody tr:last-child td {
     color: var(--text-primary);
     font-size: 24px;
     cursor: pointer;
+    display: none; /* hidden on desktop, sidebar is always open */
 }
 
 .topbar-logo {
@@ -991,6 +992,10 @@ tbody tr:last-child td {
 
     .topbar {
         display: flex;
+    }
+
+    .menu-toggle {
+        display: block;
     }
 
     /* Show WorkerManage logo in topbar (sidebar brand is hidden on mobile) */
