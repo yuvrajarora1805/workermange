@@ -43,10 +43,17 @@ export async function POST(request) {
             await pool.query('UPDATE worker_shift_logs SET end_time = NOW(), total_hours = ? WHERE id = ?', [hrs, activeShift[0].id]);
         }
 
+        // Validate that current_product_id still exists in the products table to avoid FK constraint errors
+        let safeProductId = null;
+        if (machine.current_product_id) {
+            const [productCheck] = await pool.query('SELECT id FROM products WHERE id = ?', [machine.current_product_id]);
+            safeProductId = productCheck.length > 0 ? machine.current_product_id : null;
+        }
+
         // Insert new manual assignment with shift
         await pool.query(
             'INSERT INTO daily_assignments (worker_id, machine_id, line_id, product_id, date, shift, is_manual) VALUES (?, ?, ?, ?, ?, ?, 1)',
-            [worker_id, machine_id, machine.line_id, machine.current_product_id, assignDate, shift]
+            [worker_id, machine_id, machine.line_id, safeProductId, assignDate, shift]
         );
 
         // Open new shift log only if assigning for today
@@ -54,7 +61,7 @@ export async function POST(request) {
         if (assignDate === todayStr) {
             await pool.query(
                 'INSERT INTO worker_shift_logs (worker_id, machine_id, product_id, start_time) VALUES (?, ?, ?, NOW())',
-                [worker_id, machine_id, machine.current_product_id]
+                [worker_id, machine_id, safeProductId]
             );
         }
 

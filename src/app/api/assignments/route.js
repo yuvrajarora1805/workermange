@@ -317,9 +317,16 @@ export async function POST(request) {
                 continue;
             }
 
+            // Validate product_id to avoid FK constraint errors on deleted products
+            let safeProductId = null;
+            if (candidate.machine.current_product_id) {
+                const [productCheck] = await pool.query('SELECT id FROM products WHERE id = ?', [candidate.machine.current_product_id]);
+                safeProductId = productCheck.length > 0 ? candidate.machine.current_product_id : null;
+            }
+
             await pool.query(
                 'INSERT INTO daily_assignments (worker_id, machine_id, line_id, product_id, date, shift) VALUES (?, ?, ?, ?, ?, ?)',
-                [candidate.worker.id, candidate.machine.id, candidate.machine.line_id, candidate.machine.current_product_id, date, shift]
+                [candidate.worker.id, candidate.machine.id, candidate.machine.line_id, safeProductId, date, shift]
             );
 
             // Open new shift log for auto-assignment ONLY IF assigning for today
@@ -340,7 +347,7 @@ export async function POST(request) {
 
                 await pool.query(
                     'INSERT INTO worker_shift_logs (worker_id, machine_id, product_id, start_time) VALUES (?, ?, ?, NOW())',
-                    [candidate.worker.id, candidate.machine.id, candidate.machine.current_product_id]
+                    [candidate.worker.id, candidate.machine.id, safeProductId]
                 );
             }
 
