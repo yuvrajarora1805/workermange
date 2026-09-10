@@ -39,3 +39,76 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ===== PROJECT-SPECIFIC IGNORES =====
+
+# Data files & exports (not source code)
+*.xlsx
+*.xls
+*.csv
+*.sql
+*.txt
+
+# Archives & builds
+*.zip
+*.tar.gz
+*.tar
+
+# Debug & one-off scripts at root level
+/afetchgatr.py
+/bind_production_data*.js
+/bind_production_data*.py
+/check_*.js
+/cleanup_*.js
+/debug_*.js
+/delete_*.js
+/diagnose_*.js
+/end_all_shifts.js
+/filesize.py
+/find_*.js
+/fix-*.js
+/fix_*.js
+/fresh_dump.sql
+/get_*.js
+/import_*.js
+/inspect_*.js
+/list_*.js
+/migrate_*.js
+/search_*.js
+/test_*.js
+/tmp_*.js
+/tmp_*.txt
+/tmp_*.html
+/tmp_*.py
+/update.zip
+/upload_to_api.js
+/project.zip
+/workermanage*.zip
+/workermanage*.tar.gz
+
+# Temp scripts in /scripts that are one-off utilities
+scripts/append_css.js
+scripts/check_*.js
+scripts/cleanup_*.js
+scripts/clear-*.js
+scripts/clear_*.js
+scripts/debug_*.js
+scripts/diag_*.js
+scripts/final_*.js
+scripts/fix-*.js
+scripts/import-*.js
+scripts/import_*.js
+scripts/migrate-*.js
+scripts/migrate_*.js
+scripts/robust_*.js
+scripts/run_data_repair.js
+scripts/sync_*.js
+scripts/update-*.js
+scripts/update_mobile.js
+scripts/update_page.js
+scripts/verify-*.js
+scripts/verify_*.js
+scripts/cloudflared-setup.sh
+
+# Temp assignments directory
+/tempassignment/
