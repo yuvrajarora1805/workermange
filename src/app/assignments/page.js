@@ -8,7 +8,13 @@ export default function AssignmentsPage() {
     const [data, setData] = useState({ assignments: [], bench: [], unassigned_machines: [], summary: {} });
     const [loading, setLoading] = useState(true);
     const [assigning, setAssigning] = useState(false);
-    const [date, setDate] = useState((() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
+    const [date, setDate] = useState((() => { 
+        const n = new Date(); 
+        if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
+            n.setDate(n.getDate() - 1);
+        }
+        return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; 
+    })());
     const [shift, setShift] = useState('day');
 
     const [showManualModal, setShowManualModal] = useState(false);
@@ -44,7 +50,9 @@ export default function AssignmentsPage() {
     useEffect(() => {
         setScope(getClientScope());
         const hour = new Date().getHours();
-        setShift((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const minutes = new Date().getMinutes();
+        const timeVal = hour + (minutes / 60);
+        setShift((timeVal >= 7.5 && timeVal < 19.5) ? 'day' : 'night');
     }, []);
 
     useEffect(() => { loadAssignments(); }, [date, shift]);
