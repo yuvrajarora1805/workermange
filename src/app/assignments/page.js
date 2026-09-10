@@ -15,7 +15,12 @@ export default function AssignmentsPage() {
         }
         return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; 
     })());
-    const [shift, setShift] = useState('day');
+    const [shift, setShift] = useState(() => {
+        const hour = new Date().getHours();
+        const minutes = new Date().getMinutes();
+        const timeVal = hour + (minutes / 60);
+        return (timeVal >= 7.5 && timeVal < 19.5) ? 'day' : 'night';
+    });
 
     const [showManualModal, setShowManualModal] = useState(false);
     const [manualMachine, setManualMachine] = useState(null);
@@ -49,10 +54,6 @@ export default function AssignmentsPage() {
 
     useEffect(() => {
         setScope(getClientScope());
-        const hour = new Date().getHours();
-        const minutes = new Date().getMinutes();
-        const timeVal = hour + (minutes / 60);
-        setShift((timeVal >= 7.5 && timeVal < 19.5) ? 'day' : 'night');
     }, []);
 
     useEffect(() => { loadAssignments(); }, [date, shift]);
