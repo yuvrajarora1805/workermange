@@ -914,7 +914,9 @@ export default function AssignmentsPage() {
                             .filter(w => {
                                 if (!benchSearch) return true;
                                 const q = benchSearch.toLowerCase();
-                                return w.name.toLowerCase().includes(q) || w.employee_id.toLowerCase().includes(q);
+                                const empId = (w.employee_id || '').toLowerCase();
+                                const name = (w.name || '').toLowerCase();
+                                return name.includes(q) || empId.includes(q);
                             })
                             .map(w => (
                                 <div key={w.id} style={{
@@ -983,7 +985,9 @@ export default function AssignmentsPage() {
                                             {data.bench
                                                 .filter(w => {
                                                     const q = manualSearch.toLowerCase();
-                                                    return w.employee_id.toLowerCase().includes(q);
+                                                    const empId = (w.employee_id || '').toLowerCase();
+                                                    const name = (w.name || '').toLowerCase();
+                                                    return empId.includes(q) || name.includes(q);
                                                 })
                                                 .map(w => (
                                                     <div
@@ -1010,7 +1014,9 @@ export default function AssignmentsPage() {
                                                 ))}
                                             {data.bench.filter(w => {
                                                 const q = manualSearch.toLowerCase();
-                                                return w.employee_id.toLowerCase().includes(q);
+                                                const empId = (w.employee_id || '').toLowerCase();
+                                                const name = (w.name || '').toLowerCase();
+                                                return empId.includes(q) || name.includes(q);
                                             }).length === 0 && (
                                                 <div style={{ padding: '12px', fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center' }}>
                                                     No matching workers found
