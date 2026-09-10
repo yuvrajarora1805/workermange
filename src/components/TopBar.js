@@ -97,7 +97,7 @@ export default function TopBar({ onMenuClick }) {
     const activeValue = scope.lineId || 'all';
 
     return (
-        <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', height: '60px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90 }}>
+        <header className="topbar" style={{ justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', height: '60px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <button className="menu-toggle" onClick={onMenuClick} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '22px', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>
                     ☰
