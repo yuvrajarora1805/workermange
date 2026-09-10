@@ -18,7 +18,7 @@ export default function Dashboard() {
 
     const currentShift = (() => {
         const hour = new Date().getHours();
-        return (hour >= 7 && hour < 19) ? 'day' : 'night';
+        return ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
     })();
 
     useEffect(() => {

@@ -9,7 +9,7 @@ export async function PATCH(request) {
 
         const targetDate = date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const activeShift = shift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
 
         // First ensure the column exists
         try {

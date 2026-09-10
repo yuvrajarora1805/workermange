@@ -48,7 +48,7 @@ export async function POST(request) {
 
         const prodDate = logs[0].date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const shift = logs[0].shift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const shift = logs[0].shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
 
         // Validate all entries
         for (const log of logs) {

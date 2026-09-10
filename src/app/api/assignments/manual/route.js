@@ -12,7 +12,7 @@ export async function POST(request) {
 
         const assignDate = date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const shift = reqShift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const shift = reqShift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
 
         // Ensure machine and line info
         const [machines] = await pool.query('SELECT line_id, current_product_id, worker_capacity FROM machines WHERE id = ?', [machine_id]);

@@ -8,12 +8,19 @@ export const dynamic = 'force-dynamic';
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+        let date = searchParams.get('date');
+        if (!date) {
+            const n = new Date();
+            if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
+                n.setDate(n.getDate() - 1);
+            }
+            date = n.toISOString().split('T')[0];
+        }
         let shift = searchParams.get('shift');
 
         if (!shift) {
             const hour = new Date().getHours();
-            shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+            shift = ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
         }
 
         const cookieHeader = request.headers.get('cookie') || '';
@@ -146,14 +153,21 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json();
-        const date = body.date || new Date().toISOString().split('T')[0];
+        let date = body.date;
+        if (!date) {
+            const n = new Date();
+            if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
+                n.setDate(n.getDate() - 1);
+            }
+            date = n.toISOString().split('T')[0];
+        }
         const useBestEfficiency = body.useBestEfficiency || false;
 
         // Use shift from request if provided, otherwise auto-detect
         let shift = body.shift;
         if (!shift) {
             const hour = new Date().getHours();
-            shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+            shift = ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
         }
 
         const cookieHeader = request.headers.get('cookie') || '';

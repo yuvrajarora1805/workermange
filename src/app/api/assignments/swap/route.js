@@ -12,7 +12,7 @@ export async function POST(request) {
 
         const swapDate = date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const activeShift = shift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
 
         // Get current assignments for both workers
         const [a1] = await pool.query(

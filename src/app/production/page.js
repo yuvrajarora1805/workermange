@@ -13,7 +13,7 @@ export default function ProductionPage() {
     const [filterDate, setFilterDate] = useState((() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
     const [shift, setShift] = useState(() => {
         const hour = new Date().getHours();
-        return (hour >= 7 && hour < 19) ? 'day' : 'night';
+        return ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
     });
     const currentShift = shift; // For backward compatibility with existing variable name in fetch
 

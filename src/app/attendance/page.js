@@ -16,7 +16,7 @@ export default function AttendancePage() {
     });
     const [shift, setShift] = useState(() => {
         const hour = new Date().getHours();
-        return (hour >= 7 && hour < 19) ? 'day' : 'night';
+        return ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
     });
     const [markingAll, setMarkingAll] = useState(false);
     const [importStatus, setImportStatus] = useState({ active: false, current: 0, total: 0, success: 0, error: 0 });

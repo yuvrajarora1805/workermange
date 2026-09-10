@@ -11,7 +11,7 @@ export async function POST(request) {
 
         const closeDate = date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const activeShift = shift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
         
         // Use local Date object directly for database queries to avoid the 5:30 timezone offset issue
         const now = new Date();
