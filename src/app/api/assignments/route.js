@@ -41,7 +41,7 @@ export async function GET(request) {
             WHERE da.date = ? AND da.shift = ?
         `;
         const params = [date, shift];
-        if (scope.role === 'line_lead' && scope.lineId) {
+        if (scope.lineId) {
             assignmentsQuery += ' AND da.line_id = ?';
             params.push(scope.lineId);
         }
@@ -116,7 +116,7 @@ export async function GET(request) {
             )
         `;
         const machineParams = [date, shift || 'day'];
-        if (scope.role === 'line_lead' && scope.lineId) {
+        if (scope.lineId) {
             unassignedMachinesQuery += ' AND m.line_id = ?';
             machineParams.push(scope.lineId);
         }
@@ -164,7 +164,7 @@ export async function POST(request) {
 
         // Step 1: Clear existing AUTO assignments ONLY IF explicit full reset requested
         if (resetAll) {
-            if (scope.role === 'line_lead' && scope.lineId) {
+            if (scope.lineId) {
                 await pool.query('DELETE FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 0 AND line_id = ?', [date, shift, scope.lineId]);
             } else {
                 await pool.query('DELETE FROM daily_assignments WHERE date = ? AND shift = ? AND is_manual = 0', [date, shift]);
@@ -207,7 +207,7 @@ export async function POST(request) {
             )
         `;
         const machineQueryParams = [date, shift, date, shift];
-        if (scope.role === 'line_lead' && scope.lineId) {
+        if (scope.lineId) {
             machinesQuery += ' AND m.line_id = ?';
             machineQueryParams.push(scope.lineId);
         }

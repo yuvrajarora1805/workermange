@@ -49,7 +49,7 @@ export async function GET(request) {
             query += ' AND wsl.start_time >= NOW() - INTERVAL 16 HOUR';
         }
 
-        if (scope.role === 'line_lead' && scope.lineId) {
+        if (scope.lineId) {
             query += ' AND m.line_id = ?';
             params.push(scope.lineId);
         }

@@ -160,7 +160,7 @@ export async function GET(request) {
             let workersQuery = 'SELECT id, name, employee_id FROM workers WHERE is_active = 1';
             let queryParams = [];
 
-            if (scope.role === 'line_lead' && scope.lineId) {
+            if (scope.lineId) {
                 // Show workers currently assigned to this line or not assigned to any active shifts (bench workers)
                 workersQuery = `
                     SELECT DISTINCT w.id, w.name, w.employee_id 
