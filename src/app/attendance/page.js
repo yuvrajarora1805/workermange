@@ -6,7 +6,14 @@ import * as XLSX from 'xlsx';
 export default function AttendancePage() {
     const [data, setData] = useState({ workers: [], summary: {} });
     const [loading, setLoading] = useState(true);
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    // Use local date (not UTC) — toISOString() returns UTC which can be yesterday in IST near midnight
+    const [date, setDate] = useState(() => {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    });
     const [shift, setShift] = useState(() => {
         const hour = new Date().getHours();
         return (hour >= 7 && hour < 19) ? 'day' : 'night';
@@ -580,14 +587,17 @@ export default function AttendancePage() {
                         </thead>
                         <tbody>
                             {data.workers
-                                .filter(w => {
-                                    const matchesSearch = !searchTerm || 
-                                        w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                        w.employee_id.toLowerCase().includes(searchTerm.toLowerCase());
-                                    const matchesStatus = statusFilter === 'all' || 
-                                        (statusFilter === 'unmarked' ? !w.status : w.status === statusFilter);
-                                    return matchesSearch && matchesStatus;
-                                })
+                .filter(w => {
+                    const empId = (w.employee_id || '').toLowerCase();
+                    const name = (w.name || '').toLowerCase();
+                    const search = searchTerm.toLowerCase();
+                    const matchesSearch = !searchTerm ||
+                        name.includes(search) ||
+                        empId.includes(search);
+                    const matchesStatus = statusFilter === 'all' ||
+                        (statusFilter === 'unmarked' ? !w.status : w.status === statusFilter);
+                    return matchesSearch && matchesStatus;
+                })
                                 .map(w => (
                                 <tr key={w.id}>
                                     <td data-label="ID" style={{ fontWeight: 600, color: 'var(--accent-light)' }}>{w.employee_id}</td>

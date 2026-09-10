@@ -10,7 +10,7 @@ export default function ProductionPage() {
     const [loading, setLoading] = useState(true);
     const [form, setForm] = useState({ worker_id: '', target_units: '400', actual_units: '', machine_id: '', product_id: '' });
     const [submitting, setSubmitting] = useState(false);
-    const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+    const [filterDate, setFilterDate] = useState((() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
     const [shift, setShift] = useState(() => {
         const hour = new Date().getHours();
         return (hour >= 7 && hour < 19) ? 'day' : 'night';
@@ -23,7 +23,7 @@ export default function ProductionPage() {
     const [bulkData, setBulkData] = useState([]); // Array of { worker_id, target, actual, ... }
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [importFile, setImportFile] = useState(null);
-    const [importDate, setImportDate] = useState(new Date().toISOString().split('T')[0]);
+    const [importDate, setImportDate] = useState((() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
     const [importShift, setImportShift] = useState(shift);
     const [importProgress, setImportProgress] = useState(null); // { total, current, status }
     const [importResult, setImportResult] = useState(null);

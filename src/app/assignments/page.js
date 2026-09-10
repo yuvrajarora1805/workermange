@@ -8,7 +8,7 @@ export default function AssignmentsPage() {
     const [data, setData] = useState({ assignments: [], bench: [], unassigned_machines: [], summary: {} });
     const [loading, setLoading] = useState(true);
     const [assigning, setAssigning] = useState(false);
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState((() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}`; })());
     const [shift, setShift] = useState('day');
 
     const [showManualModal, setShowManualModal] = useState(false);
