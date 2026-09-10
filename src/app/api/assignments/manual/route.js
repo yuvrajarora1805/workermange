@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
     try {
         const body = await request.json();
-        const { worker_id, machine_id, date } = body;
+        const { worker_id, machine_id, date, shift: reqShift } = body;
 
         if (!worker_id || !machine_id) {
             return NextResponse.json({ success: false, error: 'Worker ID and Machine ID required' }, { status: 400 });
@@ -12,7 +12,7 @@ export async function POST(request) {
 
         const assignDate = date || new Date().toISOString().split('T')[0];
         const hour = new Date().getHours();
-        const shift = (hour >= 7 && hour < 19) ? 'day' : 'night';
+        const shift = reqShift || ((hour >= 7 && hour < 19) ? 'day' : 'night');
 
         // Ensure machine and line info
         const [machines] = await pool.query('SELECT line_id, current_product_id, worker_capacity FROM machines WHERE id = ?', [machine_id]);
