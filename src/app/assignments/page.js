@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { getClientScope } from '@/lib/auth';
 
 export default function AssignmentsPage() {
+    const [scope, setScope] = useState({ role: 'guest' });
     const [data, setData] = useState({ assignments: [], bench: [], unassigned_machines: [], summary: {} });
     const [loading, setLoading] = useState(true);
     const [assigning, setAssigning] = useState(false);
@@ -40,6 +42,7 @@ export default function AssignmentsPage() {
     }, []);
 
     useEffect(() => {
+        setScope(getClientScope());
         const hour = new Date().getHours();
         setShift((hour >= 7 && hour < 19) ? 'day' : 'night');
     }, []);
@@ -463,9 +466,11 @@ export default function AssignmentsPage() {
                         <button className="btn btn-ghost" onClick={() => window.print()} style={{ height: '42px', padding: '0 16px', borderRadius: '8px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
                             🖨️ Print Sheet
                         </button>
-                        <button className="btn btn-primary" onClick={checkAndRunAutoAssign} disabled={assigning} style={{ height: '42px', padding: '0 20px', borderRadius: '8px', fontWeight: '600' }}>
-                            {assigning ? '⏳ Assigning...' : '⚡ Run Auto-Assignment'}
-                        </button>
+                        {scope.role !== 'line_lead' && (
+                            <button className="btn btn-primary" onClick={checkAndRunAutoAssign} disabled={assigning} style={{ height: '42px', padding: '0 20px', borderRadius: '8px', fontWeight: '600' }}>
+                                {assigning ? '⏳ Assigning...' : '⚡ Run Auto-Assignment'}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
