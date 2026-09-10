@@ -34,7 +34,10 @@ export default function EndShiftPage() {
                 setFormData(initForm);
             }
             if (dRes.success) {
-                const hasActive = dRes.data.some(d => !d.end_time);
+                const pendingLineIds = new Set(pRes.success ? pRes.data.map(s => s.line_id) : []);
+                const hasActive = dRes.data.some(d => 
+                    !d.end_time && (d.is_all_lines || pendingLineIds.has(d.line_id))
+                );
                 setActiveDowntime(hasActive);
             }
         } catch (err) { console.error('Failed to load pending shifts', err); }

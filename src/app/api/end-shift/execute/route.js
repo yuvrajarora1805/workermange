@@ -20,10 +20,22 @@ export async function POST(request) {
         try {
             await connection.beginTransaction();
 
-            // Check for active downtimes
-            const [activeDowntimes] = await connection.query('SELECT id FROM downtime_logs WHERE end_time IS NULL');
+            // Check for active downtimes for these specific lines or globally
+            const lineIds = [...new Set(entries.map(e => e.line_id).filter(id => id != null))];
+            let activeDowntimes = [];
+            if (lineIds.length > 0) {
+                const [dows] = await connection.query(`
+                    SELECT id FROM downtime_logs 
+                    WHERE end_time IS NULL AND (is_all_lines = 1 OR line_id IN (?))
+                `, [lineIds]);
+                activeDowntimes = dows;
+            } else {
+                const [dows] = await connection.query('SELECT id FROM downtime_logs WHERE end_time IS NULL AND is_all_lines = 1');
+                activeDowntimes = dows;
+            }
+
             if (activeDowntimes.length > 0) {
-                throw new Error('Please end all active Downtime Logs before closing the shift.');
+                throw new Error('Please end all active Downtime Logs for your lines before closing the shift.');
             }
 
             for (const entry of entries) {
