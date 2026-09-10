@@ -97,12 +97,13 @@ export default function TopBar({ onMenuClick }) {
     const activeValue = scope.lineId || 'all';
 
     return (
-        <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 20px', height: '64px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'fixed', top: 0, left: 0, right: 0, zIndex: 101 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <button className="menu-toggle" onClick={onMenuClick} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '20px', cursor: 'pointer' }}>
+        <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px', height: '60px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)', position: 'fixed', top: 0, left: 0, right: 0, zIndex: 90 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button className="menu-toggle" onClick={onMenuClick} style={{ background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '22px', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>
                     ☰
                 </button>
-                <div className="topbar-logo" style={{ fontWeight: 800, fontSize: '18px', background: 'var(--gradient-1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                {/* Logo — only visible on mobile (desktop sidebar already shows it) */}
+                <div className="topbar-logo" style={{ fontWeight: 800, fontSize: '17px', background: 'var(--gradient-1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     ⚙️ WorkerManage
                 </div>
             </div>
@@ -164,6 +165,7 @@ export default function TopBar({ onMenuClick }) {
 
                     <button
                         onClick={handleLogout}
+                        title="Logout"
                         style={{
                             background: 'rgba(239, 68, 68, 0.1)',
                             border: '1px solid rgba(239, 68, 68, 0.2)',
@@ -176,12 +178,14 @@ export default function TopBar({ onMenuClick }) {
                             transition: 'all 0.2s ease',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '4px',
+                            whiteSpace: 'nowrap'
                         }}
                         onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.2)'}
                         onMouseLeave={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
                     >
-                        🚪 Logout
+                        <span>🚪</span>
+                        <span className="hide-on-mobile"> Logout</span>
                     </button>
                 </div>
             </div>

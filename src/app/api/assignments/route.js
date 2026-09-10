@@ -42,7 +42,7 @@ export async function GET(request) {
         `;
         const params = [date, shift];
         if (scope.lineId) {
-            assignmentsQuery += ' AND da.line_id = ?';
+            assignmentsQuery += ' AND m.line_id = ?';
             params.push(scope.lineId);
         }
         assignmentsQuery += ' ORDER BY l.name, m.position ASC';

@@ -46,32 +46,39 @@ export default function Sidebar({ isOpen, onClose, pendingCount = 0, alertActive
     return (
         <>
             <aside className={`sidebar ${isOpen ? 'show' : ''}`} id="sidebar">
+                {/* Logo header — always rendered, brand text hidden on mobile via CSS */}
                 <div className="sidebar-logo">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h1>⚙️ WorkerManage</h1>
-                            <p style={{ color: scope.role === 'line_lead' ? 'var(--info)' : 'var(--text-muted)' }}>
-                                {scope.role === 'line_lead' ? `${scope.lineName} Lead` : getRoleDisplayName(scope.role)}
-                            </p>
-                        </div>
-                        <button className="mobile-close" onClick={onClose}>✕</button>
+                    <div className="sidebar-brand">
+                        <h1>⚙️ WorkerManage</h1>
+                        <p style={{ color: scope.role === 'line_lead' ? 'var(--info)' : 'var(--text-muted)' }}>
+                            {scope.role === 'line_lead' ? `${scope.lineName} Lead` : getRoleDisplayName(scope.role)}
+                        </p>
                     </div>
+                    {/* Close button — always visible on mobile (positioned by CSS flex) */}
+                    <button
+                        className="mobile-close"
+                        onClick={onClose}
+                        aria-label="Close menu"
+                        style={{ fontSize: '22px', padding: '4px 8px' }}
+                    >
+                        ✕
+                    </button>
                 </div>
+
+                {/* Scrollable nav — flex:1 + min-height:0 + overflow-y:auto in CSS */}
                 <nav className="sidebar-nav">
                     {filteredLinks.map((link) => (
                         <a
                             key={link.href}
                             href={link.href}
                             className={`nav-link ${pathname === link.href ? 'active' : ''}`}
-
                             onClick={onClose}
                             style={{ display: 'flex', alignItems: 'center' }}
                         >
                             <span className="nav-icon">{link.icon}</span>
                             <span>{link.label}</span>
                             {link.href === '/end-shift' && pendingCount > 0 && (
-                                <span 
-                                    className={`sidebar-badge`} 
+                                <span
                                     style={{
                                         marginLeft: 'auto',
                                         padding: '2px 8px',
@@ -79,7 +86,8 @@ export default function Sidebar({ isOpen, onClose, pendingCount = 0, alertActive
                                         fontSize: '11px',
                                         fontWeight: 'bold',
                                         background: alertActive ? 'var(--danger, #ef4444)' : 'var(--info, #3b82f6)',
-                                        color: 'white'
+                                        color: 'white',
+                                        flexShrink: 0
                                     }}
                                 >
                                     {pendingCount}
@@ -89,7 +97,7 @@ export default function Sidebar({ isOpen, onClose, pendingCount = 0, alertActive
                     ))}
                 </nav>
             </aside>
-            {isOpen && <div className="sidebar-overlay" onClick={onClose}></div>}
+            {isOpen && <div className="sidebar-overlay" onClick={onClose} />}
         </>
     );
 }

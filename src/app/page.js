@@ -44,7 +44,15 @@ export default function Dashboard() {
             if (assignmentsRes.data?.assignments) {
                 for (const line of assignmentsRes.data.assignments) {
                     for (const m of line.machines) {
-                        allAssignments.push(m);
+                        if (m.workers && m.workers.length > 0) {
+                            for (const w of m.workers) {
+                                allAssignments.push({
+                                    worker_name: w.worker_name,
+                                    machine_name: m.machine_name,
+                                    line_name: line.line_name
+                                });
+                            }
+                        }
                     }
                 }
             }

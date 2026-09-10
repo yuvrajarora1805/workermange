@@ -56,21 +56,28 @@
     padding: 0;
 }
 
+/* iOS Safari fix: overflow-x:hidden on body kills scroll inside position:fixed children.
+   Move it to html instead, which doesn't have this bug. */
+html {
+    overflow-x: hidden;
+}
+
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--gradient-bg);
     color: var(--text-primary);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    /* Do NOT put overflow-x:hidden here — it breaks scroll inside position:fixed on iOS */
 }
 
 /* ===== LAYOUT ===== */
 .app-wrapper {
     display: flex;
     min-height: 100vh;
-    overflow-x: hidden;
+    min-height: 100dvh;
     width: 100%;
+    /* No overflow:hidden here — sidebar is position:fixed, doesn't cause overflow */
 }
 
 .sidebar {
@@ -83,14 +90,24 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    /* Use dynamic viewport height so mobile browser chrome doesn't obscure content */
     height: 100vh;
-    z-index: 100;
-    transition: var(--transition);
+    height: 100dvh;
+    /* DO NOT use overflow: hidden here — it kills touch-scroll in children on iOS */
+    z-index: 105; /* above topbar (z-index: 90) and overlay (z-index: 100) */
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform; /* GPU-accelerate the slide animation */
 }
 
 .sidebar-logo {
-    padding: 24px 20px;
+    /* Fixed height header — always shown (with or without brand text) */
+    flex-shrink: 0;
+    padding: 20px 16px;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 64px;
 }
 
 .sidebar-logo h1 {
@@ -101,6 +118,7 @@ body {
     background-clip: text;
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.5px;
+    line-height: 1.2;
 }
 
 .sidebar-logo p {
@@ -111,12 +129,47 @@ body {
     letter-spacing: 1px;
 }
 
+/* Brand text (h1 + subtitle) — shown on desktop, hidden on mobile */
+.sidebar-brand {
+    display: flex;
+    flex-direction: column;
+}
+
 .sidebar-nav {
-    flex: 1;
-    padding: 12px 10px;
+    /* Take all remaining height after the logo header */
+    flex: 1 1 0;
+    min-height: 0; /* CRITICAL: Without this, flex items never shrink to scroll */
+    padding: 10px 8px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+
+    /* ---- Scroll: must use 'scroll' not 'auto' on iOS Safari ---- */
+    overflow-y: scroll;       /* 'scroll' forces scroll context even when not overflowing */
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;   /* iOS momentum/kinetic scroll */
+    touch-action: pan-y;                 /* Tell browser: handle vertical panning here */
+    overscroll-behavior-y: contain;      /* Prevent scroll-chaining to page */
+
+    /* Bottom padding for phones with home indicator */
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+
+    /* Thin scrollbar on desktop */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+    width: 3px;
+}
+
+.sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
 }
 
 .nav-link {
@@ -164,9 +217,12 @@ body {
 
 .main-content {
     flex: 1;
-    margin-left: 260px;
-    padding: 92px 32px 28px;
+    margin-left: 260px;  /* Matches desktop sidebar width */
+    padding: 32px 32px 40px; /* top: just breathing room, no topbar on desktop */
     min-height: 100vh;
+    min-height: 100dvh;
+    width: 0; /* Prevents content from pushing past container on flex */
+    min-width: 0;
 }
 
 /* ===== PAGE HEADER ===== */
@@ -892,6 +948,8 @@ tbody tr:last-child td {
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
+    /* Hidden on desktop — sidebar already shows the WorkerManage brand */
+    display: none;
 }
 
 /* ===== MOBILE OVERRIDES ===== */
@@ -909,39 +967,64 @@ tbody tr:last-child td {
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 95;
+    z-index: 100; /* between topbar(90) and sidebar(105) */
     animation: fadeIn 0.3s ease;
 }
 
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
-        width: 280px;
-        z-index: 100;
+        width: 75vw;    /* Responsive width on tablets */
+        max-width: 300px;
+        box-shadow: none;
     }
 
     .sidebar.show {
         transform: translateX(0);
-        box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+        box-shadow: 20px 0 60px rgba(0, 0, 0, 0.6);
     }
 
     .main-content {
         margin-left: 0;
-        padding-top: 80px; /* Space for TopBar */
+        padding-top: 76px; /* 60px topbar + 16px breathing room */
     }
 
     .topbar {
         display: flex;
     }
 
+    /* Show WorkerManage logo in topbar (sidebar brand is hidden on mobile) */
+    .topbar-logo {
+        display: block;
+    }
+
     .mobile-close {
         display: block;
+    }
+
+    /* Hide brand text inside sidebar — TopBar already shows the logo */
+    .sidebar-brand {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 80vw;
+        max-width: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        width: 88vw;
+        max-width: 320px;
     }
 }
 
 @media (max-width: 768px) {
     .main-content {
-        padding: 80px 16px 40px;
+        padding: 76px 16px 40px; /* 60px topbar + 16px gap */
     }
 
     .page-header h2 {
