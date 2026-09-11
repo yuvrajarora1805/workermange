@@ -9,7 +9,14 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'No entries provided to end shift.' }, { status: 400 });
         }
 
-        const closeDate = date || new Date().toISOString().split('T')[0];
+        let closeDate = date;
+        if (!closeDate) {
+            const n = new Date();
+            if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
+                n.setDate(n.getDate() - 1);
+            }
+            closeDate = n.toISOString().split('T')[0];
+        }
         const hour = new Date().getHours();
         const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
         
