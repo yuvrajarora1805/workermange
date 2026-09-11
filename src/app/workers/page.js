@@ -271,7 +271,7 @@ export default function WorkersPage() {
             // Handle Excel serial date (numeric)
             if (typeof d === 'number') {
                 const date = new Date(Math.round((d - 25569) * 86400 * 1000));
-                return date.toISOString().split('T')[0];
+                return new Date(date.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
             }
             
             if (typeof d === 'string') {

@@ -17,8 +17,8 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
 
     const currentShift = (() => {
-        const hour = new Date().getHours();
-        return ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        return ((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night';
     })();
 
     useEffect(() => {
@@ -27,7 +27,7 @@ export default function Dashboard() {
 
     async function loadDashboard() {
         try {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
             const [statsRes, assignmentsRes, efficiencyRes, downtimeRes] = await Promise.all([
                 fetch(`/api/stats?shift=${currentShift}`).then(r => r.json()),
                 fetch(`/api/assignments?shift=${currentShift}`).then(r => r.json()),

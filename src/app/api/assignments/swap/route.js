@@ -10,9 +10,9 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'Two worker IDs required' }, { status: 400 });
         }
 
-        const swapDate = date || new Date().toISOString().split('T')[0];
-        const hour = new Date().getHours();
-        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
+        const swapDate = date || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night');
 
         // Get current assignments for both workers
         const [a1] = await pool.query(
@@ -38,7 +38,7 @@ export async function POST(request) {
         try {
             await connection.beginTransaction();
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
             const isToday = (swapDate === todayStr);
 
             // 1. Process Worker 1 logs & production (Only if swap is for today)

@@ -11,14 +11,14 @@ export async function POST(request) {
 
         let closeDate = date;
         if (!closeDate) {
-            const n = new Date();
+            const n = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
             if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
                 n.setDate(n.getDate() - 1);
             }
-            closeDate = n.toISOString().split('T')[0];
+            closeDate = n.toLocaleDateString("en-CA");
         }
-        const hour = new Date().getHours();
-        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night');
         
         // Use local Date object directly for database queries to avoid the 5:30 timezone offset issue
         const now = new Date();

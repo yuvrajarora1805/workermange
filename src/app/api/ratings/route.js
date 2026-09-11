@@ -45,7 +45,7 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'Rating must be between 1 and 4' }, { status: 400 });
         }
 
-        const ratingDate = date || new Date().toISOString().split('T')[0];
+        const ratingDate = date || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
 
         // START SYNC LOGIC
         const skillMap = {

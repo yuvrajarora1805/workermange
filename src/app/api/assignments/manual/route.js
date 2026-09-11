@@ -10,9 +10,9 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'Worker ID and Machine ID required' }, { status: 400 });
         }
 
-        const assignDate = date || new Date().toISOString().split('T')[0];
-        const hour = new Date().getHours();
-        const shift = reqShift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
+        const assignDate = date || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        const shift = reqShift || (((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night');
 
         // Ensure machine and line info
         const [machines] = await pool.query('SELECT line_id, current_product_id, worker_capacity FROM machines WHERE id = ?', [machine_id]);
@@ -57,7 +57,7 @@ export async function POST(request) {
         );
 
         // Open new shift log only if assigning for today
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
         if (assignDate === todayStr) {
             await pool.query(
                 'INSERT INTO worker_shift_logs (worker_id, machine_id, product_id, start_time) VALUES (?, ?, ?, NOW())',

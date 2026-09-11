@@ -6,7 +6,7 @@ import pool from './db';
  * @param {number|number[]|null} workerIds - Optional single worker ID or array of IDs to update
  */
 export async function recalculateEfficiency(date, workerIds = null) {
-    if (!date) date = new Date().toISOString().split('T')[0];
+    if (!date) date = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
 
     // 1. Get worker(s)
     let query = 'SELECT id, name, employee_id, rating, skill_level FROM workers WHERE is_active = 1';

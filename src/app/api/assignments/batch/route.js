@@ -12,12 +12,12 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'No assignments provided' }, { status: 400 });
         }
 
-        const assignDate = date || new Date().toISOString().split('T')[0];
-        const todayStr = new Date().toISOString().split('T')[0];
+        const assignDate = date || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
+        const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
         const isToday = (assignDate === todayStr);
 
-        const hour = new Date().getHours();
-        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night');
         const now = new Date();
 
         connection = await pool.getConnection();

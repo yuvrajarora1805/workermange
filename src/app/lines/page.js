@@ -387,7 +387,7 @@ export default function LinesPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${line.name}-layout-${new Date().toISOString().split('T')[0]}.html`;
+        link.download = `${line.name}-layout-${new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA")}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -429,7 +429,7 @@ export default function LinesPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${line.name}-layout-${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `${line.name}-layout-${new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA")}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -642,7 +642,7 @@ export default function LinesPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `all-lines-layout-${new Date().toISOString().split('T')[0]}.html`;
+        link.download = `all-lines-layout-${new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA")}.html`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -696,7 +696,7 @@ export default function LinesPage() {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `all-lines-layout-${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `all-lines-layout-${new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA")}.csv`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

@@ -7,16 +7,19 @@ export default function AttendancePage() {
     const [data, setData] = useState({ workers: [], summary: {} });
     const [loading, setLoading] = useState(true);
     // Use local date (not UTC) — toISOString() returns UTC which can be yesterday in IST near midnight
-    const [date, setDate] = useState(() => {
-        const now = new Date();
-        const y = now.getFullYear();
-        const m = String(now.getMonth() + 1).padStart(2, '0');
-        const d = String(now.getDate()).padStart(2, '0');
+        const [date, setDate] = useState(() => {
+        const n = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+        if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
+            n.setDate(n.getDate() - 1);
+        }
+        const y = n.getFullYear();
+        const m = String(n.getMonth() + 1).padStart(2, '0');
+        const d = String(n.getDate()).padStart(2, '0');
         return `${y}-${m}-${d}`;
     });
     const [shift, setShift] = useState(() => {
-        const hour = new Date().getHours();
-        return ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        return ((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night';
     });
     const [markingAll, setMarkingAll] = useState(false);
     const [importStatus, setImportStatus] = useState({ active: false, current: 0, total: 0, success: 0, error: 0 });

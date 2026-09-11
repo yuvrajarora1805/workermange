@@ -27,6 +27,7 @@ export default function Sidebar({ isOpen, onClose, pendingCount = 0, alertActive
         { href: '/ratings', label: 'Ratings', icon: '⭐', roles: ['admin', 'supervisor'] },
         { href: '/production', label: 'Production Logs', icon: '🏭', roles: ['admin', 'supervisor', 'line_lead'] },
         { href: '/downtime', label: 'Downtime Logs', icon: '⏱️', roles: ['admin', 'supervisor', 'line_lead', 'production_team'] },
+        { href: '/changeover', label: 'Changeover', icon: '🔄', roles: ['admin', 'supervisor', 'line_lead'] },
         { href: '/end-shift', label: 'End Shift', icon: '🏁', roles: ['admin', 'supervisor', 'line_lead'] },
     ];
 

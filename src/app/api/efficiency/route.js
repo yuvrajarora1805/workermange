@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
-        const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
+        const date = searchParams.get('date') || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
         const page = parseInt(searchParams.get('page')) || 1;
         const limit = parseInt(searchParams.get('limit')) || 50;
         const offset = (page - 1) * limit;

@@ -10,17 +10,17 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         let date = searchParams.get('date');
         if (!date) {
-            const n = new Date();
+            const n = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
             if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
                 n.setDate(n.getDate() - 1);
             }
-            date = n.toISOString().split('T')[0];
+            date = n.toLocaleDateString("en-CA");
         }
         let shift = searchParams.get('shift');
 
         if (!shift) {
-            const hour = new Date().getHours();
-            shift = ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
+            const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+            shift = ((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night';
         }
 
         const cookieHeader = request.headers.get('cookie') || '';
@@ -155,19 +155,19 @@ export async function POST(request) {
         const body = await request.json();
         let date = body.date;
         if (!date) {
-            const n = new Date();
+            const n = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
             if (n.getHours() < 7 || (n.getHours() === 7 && n.getMinutes() < 30)) {
                 n.setDate(n.getDate() - 1);
             }
-            date = n.toISOString().split('T')[0];
+            date = n.toLocaleDateString("en-CA");
         }
         const useBestEfficiency = body.useBestEfficiency || false;
 
         // Use shift from request if provided, otherwise auto-detect
         let shift = body.shift;
         if (!shift) {
-            const hour = new Date().getHours();
-            shift = ((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night';
+            const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+            shift = ((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night';
         }
 
         const cookieHeader = request.headers.get('cookie') || '';
@@ -344,7 +344,7 @@ export async function POST(request) {
             );
 
             // Open new shift log for auto-assignment ONLY IF assigning for today
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
             if (date === todayStr) {
                 // Close any existing active shift log for this worker first
                 const [activeShift] = await pool.query(

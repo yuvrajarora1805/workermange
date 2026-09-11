@@ -6,9 +6,9 @@ export async function POST(request) {
         const body = await request.json();
         const { source, targetWorkerId, targetMachineId, date, shift, sourceActuals, targetActuals, sourceShiftId, targetShiftId } = body;
 
-        const swapDate = date || new Date().toISOString().split('T')[0];
-        const hour = new Date().getHours();
-        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date().getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date().getMinutes() < 30))) ? 'day' : 'night');
+        const swapDate = date || new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
+        const hour = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getHours();
+        const activeShift = shift || (((hour > 7 || (hour === 7 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() >= 30)) && (hour < 19 || (hour === 19 && new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).getMinutes() < 30))) ? 'day' : 'night');
         
         // Use local Date object directly for database queries to avoid the 5:30 timezone offset issue
         const now = new Date();
@@ -23,7 +23,7 @@ export async function POST(request) {
             let sourceOriginalStartTime = null;
             let targetOriginalStartTime = null;
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
             const isToday = (swapDate === todayStr);
 
             // 1. Close current shifts and log partial production if they exist (Only if swap is for today)

@@ -14,7 +14,7 @@ export default function ProductionDashboard() {
     const [selectedDate, setSelectedDate] = useState(() => {
         const d = new Date();
         d.setDate(d.getDate() - 1);
-        return d.toISOString().split('T')[0];
+        return new Date(d.toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA");
     });
     
     // Auto refresh live data every minute
@@ -178,7 +178,7 @@ export default function ProductionDashboard() {
 
             <div className="card" style={{ marginTop: '24px' }}>
                 <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                    <h3 className="card-title">📖 {period === 'day' ? (selectedDate === new Date().toISOString().split('T')[0] ? "Today's" : selectedDate) : period.charAt(0).toUpperCase() + period.slice(1) + "'s"} Closed Production Logs</h3>
+                    <h3 className="card-title">📖 {period === 'day' ? (selectedDate === new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})).toLocaleDateString("en-CA") ? "Today's" : selectedDate) : period.charAt(0).toUpperCase() + period.slice(1) + "'s"} Closed Production Logs</h3>
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <div className="search-box" style={{ width: '200px' }}>
                             <span className="search-icon">🔍</span>
